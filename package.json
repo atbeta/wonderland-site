@@ -12,6 +12,8 @@
     "astro": "^4.16.0"
   },
   "devDependencies": {
-    "typescript": "^5.5.0"
+    "mdast-util-to-string": "^4.0.0",
+    "typescript": "^5.5.0",
+    "unist-util-visit": "^5.1.0"
   }
 }

@@ -1,12 +1,13 @@
 // remark plugin: turn spark-card metadata lines into <dl class="spark-meta">
 //
-// Recognizes paragraphs whose first inline token is a known spark metadata key
-// (碰撞/连接点/锚点/族/状态/如果要做/画面) or a score key
-// (惊讶度/具体度/可行动度), and splits the paragraph text on every
-// `**K**:` marker into <dt>/<dd> pairs.
+// Walks each paragraph's inline children. A paragraph qualifies as a spark
+// metadata block when its first inline child is a `<strong>` whose text
+// matches one of the known metadata keys (碰撞 / 连接点 / 锚点 / 族 / 状态 /
+// 如果要做 / 画面 / 惊讶度 / 具体度 / 可行动度). Subsequent values are
+// collected until the next <strong>**K**: marker; everything between
+// markers becomes one <dd> for that <dt>.
 
 import { visit, SKIP } from 'unist-util-visit';
-import { toString as mdastToString } from 'mdast-util-to-string';
 
 const META_KEYS = new Set([
   '碰撞', '连接点', '锚点', '族', '状态', '如果要做', '画面',
@@ -22,63 +23,98 @@ function escapeHtml(s) {
     .replace(/>/g, '&gt;');
 }
 
+function isStrong(node) {
+  return node && node.type === 'strong';
+}
+
+function strongText(node) {
+  // node.children should be text-like; flatten to plain text.
+  if (!node || !Array.isArray(node.children)) return '';
+  return node.children
+    .map((c) => (c.type === 'text' ? c.value : ''))
+    .join('');
+}
+
+// Render an inline node array to a plain string (best-effort, no HTML escapes).
+function inlineToPlain(children) {
+  if (!Array.isArray(children)) return '';
+  return children
+    .map((c) => {
+      if (c.type === 'text') return c.value;
+      if (c.type === 'strong' || c.type === 'emphasis') return inlineToPlain(c.children);
+      if (c.type === 'inlineCode') return c.value;
+      if (c.type === 'link') return inlineToPlain(c.children);
+      return '';
+    })
+    .join('');
+}
+
 export default function remarkWonderlandSparkMeta() {
   return (tree) => {
     visit(tree, 'paragraph', (node, index, parent) => {
       if (!parent || index == null) return;
-      const text = mdastToString(node);
-      if (!text) return;
+      const children = node.children;
+      if (!Array.isArray(children) || children.length === 0) return;
 
-      // First metadata key determines whether this paragraph is a spark metadata block.
-      const headMatch = /^\s*\*\*([^*]+)\*\*:\s*/.exec(text);
-      if (!headMatch) return;
-      if (!META_KEYS.has(headMatch[1].trim())) return;
+      // First inline token must be a <strong> matching a known key.
+      const first = children[0];
+      if (!isStrong(first)) return;
+      const firstKey = strongText(first).trim();
+      if (!META_KEYS.has(firstKey)) return;
 
-      // Walk all `**K**:` markers in order and slice the rest as the value.
-      const markerRe = /\*\*([^*]+)\*\*:\s*/g;
+      // Walk children, alternating key spans (rendered as <dt>) and value
+      // spans (rendered as <dd>). A "key span" = a <strong> child whose text
+      // is a known META_KEYS entry. We allow leading text before the first
+      // key (rare, but tolerant).
       const items = [];
-      let m;
-      while ((m = markerRe.exec(text)) !== null) {
-        const key = m[1].trim();
-        if (!META_KEYS.has(key)) continue;
-        const valStart = m.index + m[0].length;
-        // Find next marker (or end of text).
-        const rest = text.slice(valStart);
-        const nextMatch = rest.match(/\s*\*\*([^*]+)\*\*:\s*/);
-        const valEnd = nextMatch
-          ? valStart + nextMatch.index
-          : text.length;
-        const value = text.slice(valStart, valEnd).trim();
-        items.push({ key, value });
+      let current = null;
+      const flush = () => {
+        if (current) {
+          items.push({ key: current.key, value: current.value });
+          current = null;
+        }
+      };
+      for (let i = 0; i < children.length; i++) {
+        const c = children[i];
+        if (isStrong(c)) {
+          const k = strongText(c).trim();
+          if (META_KEYS.has(k)) {
+            flush();
+            current = { key: k, value: '' };
+            continue;
+          }
+          // A non-meta <strong> — treat its inline text as part of the current value.
+          if (current) current.value += inlineToPlain(c.children);
+          continue;
+        }
+        if (current) {
+          current.value += inlineToPlain([c]);
+        }
       }
+      flush();
 
       if (items.length === 0) return;
 
-      // Build a definition list. Score keys become <dt class="score"> with the
-      // value rendered as a number out of 10 (with a tiny inline bar if numeric).
       const parts = items.map(({ key, value }) => {
         const isScore = SCORE_KEYS.has(key);
         const dtClass = isScore ? 'dt-score' : 'dt-meta';
         const ddClass = isScore ? 'dd-score' : 'dd-meta';
-
         let ddInner;
         if (isScore) {
           const numMatch = value.match(/(\d+)/);
           const num = numMatch ? Number(numMatch[1]) : null;
           if (num !== null) {
-            ddInner = `<span class="score-num">${num}</span>` +
-                      `<span class="score-bar" aria-hidden="true">` +
-                      `<span class="score-bar-fill" style="width:${num * 10}%"></span>` +
-                      `</span>`;
+            ddInner =
+              `<span class="score-num">${num}</span>` +
+              `<span class="score-bar" aria-hidden="true">` +
+                `<span class="score-bar-fill" style="width:${num * 10}%"></span>` +
+              `</span>`;
           } else {
             ddInner = escapeHtml(value);
           }
         } else {
-          // Allow anchor tags in long values: keep value as escaped text,
-          // but render trailing parenthetical notes verbatim.
-          ddInner = escapeHtml(value);
+          ddInner = escapeHtml(value.trim());
         }
-
         return `<dt class="${dtClass}">${escapeHtml(key)}</dt>` +
                `<dd class="${ddClass}">${ddInner}</dd>`;
       }).join('');

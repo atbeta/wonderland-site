@@ -1,26 +1,46 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { getCollection, render } from 'astro:content';
+import { getCollection } from 'astro:content';
 
 const allEntries = await getCollection('days');
 const entries = allEntries
   .map((entry) => {
     const body = entry.body || '';
-    const titleMatch = body.match(/^# Wonderland\s*[—–-]\s*([^\n(]+?)(?:\s*\(run\s+\d+\))?\s*$/m);
-    const summaryMatch = body.match(/## 速览[^]*?\n([\s\S]*?)(?=\n## |\n$)/);
-    const cards = [...body.matchAll(/^###\s+💥\s+#(\d+)\s+[—–-]\s+(.+)$/gm)].map((m) => ({
-      n: m[1],
-      title: m[2].trim(),
+    const titleMatch = body.match(/^# Wonderland\s*[—–-]\s*([^\n(]+?)(?:\s*\(run\s+(\d+)\))?\s*$/m);
+
+    // Find every spark image, paired with its title (alt text or preceding heading).
+    // Each ![#N — Title](url) is a featured spark. We capture groups (n, title, url).
+    const imageRegex = /!\[#(\d+)\s*[—–-]\s*([^\]]+)\]\(([^)]+)\)/g;
+    const featuredSparks = [];
+    let m;
+    while ((m = imageRegex.exec(body)) !== null) {
+      featuredSparks.push({ n: m[1], title: m[2].trim(), url: m[3] });
+    }
+
+    // Fallback: also accept any image after `## 配图` even if alt text differs.
+    if (featuredSparks.length === 0) {
+      const gallery = body.match(/## 配图[^]*?(?=^## |\Z)/m)?.[0] || '';
+      const genericImgRe = /!\[[^\]]*\]\((https?:\/\/[^)]+)\)/g;
+      let g;
+      while ((g = genericImgRe.exec(gallery)) !== null) {
+        featuredSparks.push({ n: '·', title: 'Spark image', url: g[1] });
+      }
+    }
+
+    const cards = [...body.matchAll(/^###\s+💥\s+#(\d+)\s+[—–-]\s+(.+)$/gm)].map((mm) => ({
+      n: mm[1],
+      title: mm[2].trim(),
     }));
-    const collisions = [...body.matchAll(/^##\s+组合\s+\d+[：:]\s*(.+?)(?:\s*=\s*约束.*|\s*\+.*)?$/gm)].map((m) => m[1].trim());
+    const collisions = [...body.matchAll(/^##\s+组合\s+\d+[：:]\s*(.+?)\s*$/gm)].map((mm) => mm[1].trim());
+
     return {
       slug: entry.id,
       dateLabel: titleMatch?.[1].trim() || entry.id,
-      runHint: body.match(/\(run\s+(\d+)\)/)?.[1] || null,
+      runHint: titleMatch?.[2] || body.match(/\(run\s+(\d+)\)/)?.[1] || null,
       collisions,
-      summary: summaryMatch?.[1]?.trim().split('\n').slice(0, 8).join('\n').trim() || '',
-      cards,
       cardCount: cards.length,
+      cards,
+      featuredSparks,
       topCards: cards.slice(0, 3),
     };
   })
@@ -32,6 +52,7 @@ const entries = allEntries
   });
 
 const totalCards = entries.reduce((acc, e) => acc + e.cardCount, 0);
+const totalFeatured = entries.reduce((acc, e) => acc + e.featuredSparks.length, 0);
 const latest = entries[0];
 const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
 ---
@@ -48,7 +69,7 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
     {latest && (
       <div class="latest-cta">
         <a href={`/days/${latest.slug}/`} class="btn-primary">Read {dateOfLatest} →</a>
-        <span class="latest-meta">{latest.cardCount} sparks · {latest.collisions.length} collisions</span>
+        <span class="latest-meta">{latest.cardCount} sparks · {latest.featuredSparks.length} featured · {latest.collisions.length} collisions</span>
       </div>
     )}
   </section>
@@ -56,7 +77,7 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
   <section class="log container">
     <header class="log-header">
       <h2>The Log</h2>
-      <p class="count">{entries.length} night{entries.length === 1 ? '' : 's'} · {totalCards} sparks</p>
+      <p class="count">{entries.length} night{entries.length === 1 ? '' : 's'} · {totalCards} sparks · {totalFeatured} featured</p>
     </header>
 
     {entries.length === 0 ? (
@@ -65,33 +86,56 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
       <ol class="entry-list" reversed>
         {entries.map((entry) => (
           <li class="entry">
-            <a href={`/days/${entry.slug}/`} class="entry-link">
-              <header class="entry-head">
-                <h3 class="entry-date">
-                  {entry.dateLabel}
-                  {entry.runHint && <span class="run-badge">run {entry.runHint}</span>}
-                </h3>
-                <p class="entry-meta">
-                  <span>{entry.cardCount} sparks</span>
-                  <span class="dot">·</span>
-                  <span>{entry.collisions.length} collisions</span>
-                </p>
-              </header>
-              {entry.collisions.length > 0 && (
-                <p class="entry-collisions">
-                  {entry.collisions.map((c) => (
-                    <span class="collision-chip">{c}</span>
-                  ))}
-                </p>
-              )}
-              {entry.summary && <p class="entry-summary">{entry.summary.replace(/^[-*]\s*/, '').split('\n').slice(0, 4).join(' · ')}</p>}
-              {entry.topCards.length > 0 && (
-                <ul class="entry-top">
-                  {entry.topCards.map((c) => (
-                    <li><strong>#{c.n}</strong> {c.title}</li>
-                  ))}
-                </ul>
-              )}
+            <header class="entry-head">
+              <h3 class="entry-date">
+                {entry.dateLabel}
+                {entry.runHint && <span class="run-badge">run {entry.runHint}</span>}
+              </h3>
+              <p class="entry-meta">
+                <span>{entry.cardCount} sparks</span>
+                {entry.featuredSparks.length > 0 && (
+                  <>
+                    <span class="dot">·</span>
+                    <span>{entry.featuredSparks.length} featured</span>
+                  </>
+                )}
+                <span class="dot">·</span>
+                <span>{entry.collisions.length} collisions</span>
+              </p>
+            </header>
+
+            {entry.collisions.length > 0 && (
+              <p class="entry-collisions">
+                {entry.collisions.map((c) => (
+                  <span class="collision-chip">{c}</span>
+                ))}
+              </p>
+            )}
+
+            {entry.featuredSparks.length > 0 && (
+              <div class="featured-strip">
+                {entry.featuredSparks.map((spark) => (
+                  <a href={`/days/${entry.slug}/`} class="featured-spark">
+                    <div class="featured-image">
+                      <img src={spark.url} alt={`#${spark.n} — ${spark.title}`} loading="lazy" />
+                      <span class="featured-badge">#{spark.n}</span>
+                    </div>
+                    <p class="featured-title">#{spark.n} — {spark.title}</p>
+                  </a>
+                ))}
+              </div>
+            )}
+
+            {entry.topCards.length > 0 && (
+              <ul class="entry-top">
+                {entry.topCards.map((c) => (
+                  <li><strong>#{c.n}</strong> {c.title}</li>
+                ))}
+              </ul>
+            )}
+
+            <a href={`/days/${entry.slug}/`} class="entry-readmore">
+              Read the full night →
             </a>
           </li>
         ))}
@@ -125,10 +169,7 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
     max-width: 22ch;
   }
 
-  .title em {
-    font-style: italic;
-    color: var(--accent);
-  }
+  .title em { font-style: italic; color: var(--accent); }
 
   .lede {
     margin-top: 1.25rem;
@@ -208,27 +249,19 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.25rem;
   }
 
   .entry {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    transition: border-color 0.15s, box-shadow 0.2s, transform 0.15s;
+    padding: 1.5rem 1.75rem;
+    transition: border-color 0.15s, box-shadow 0.2s;
   }
   .entry:hover {
     border-color: var(--accent);
     box-shadow: var(--shadow-md);
-  }
-
-  .entry-link {
-    display: block;
-    padding: 1.5rem 1.75rem;
-    color: inherit;
-  }
-  .entry-link:hover {
-    color: inherit;
   }
 
   .entry-head {
@@ -242,7 +275,7 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
 
   .entry-date {
     font-family: var(--font-serif);
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     font-weight: 600;
     letter-spacing: -0.01em;
     color: var(--text);
@@ -274,7 +307,7 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: 1rem;
   }
 
   .collision-chip {
@@ -286,26 +319,78 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
     font-weight: 500;
   }
 
-  .entry-summary {
-    color: var(--text-muted);
-    font-size: 0.9rem;
-    margin-bottom: 0.85rem;
-    line-height: 1.55;
+  /* Featured sparks strip (带图 spark — main visual hook) */
+  .featured-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin: 1.25rem 0 1.25rem;
+  }
+
+  .featured-spark {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    color: inherit;
+  }
+  .featured-spark:hover { color: inherit; }
+
+  .featured-image {
+    position: relative;
+    aspect-ratio: 3 / 2;
+    overflow: hidden;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg-alt);
+  }
+
+  .featured-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.4s cubic-bezier(0.2, 0, 0.2, 1);
+  }
+
+  .featured-spark:hover .featured-image img {
+    transform: scale(1.04);
+  }
+
+  .featured-badge {
+    position: absolute;
+    top: 0.6rem;
+    left: 0.6rem;
+    background: rgba(0, 0, 0, 0.78);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    backdrop-filter: blur(4px);
+  }
+
+  .featured-title {
+    font-family: var(--font-serif);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--text);
+    letter-spacing: -0.01em;
   }
 
   .entry-top {
     list-style: none;
-    padding: 0;
+    padding: 1rem 0 0;
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
-    margin-top: 0.85rem;
-    padding-top: 0.85rem;
+    gap: 0.35rem;
     border-top: 1px dashed var(--border);
+    margin-top: 0.5rem;
   }
 
   .entry-top li {
-    font-size: 0.85rem;
+    font-size: 0.875rem;
     color: var(--text-muted);
     line-height: 1.55;
   }
@@ -316,5 +401,20 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
     margin-right: 0.4rem;
     font-family: var(--font-mono);
     font-size: 0.8rem;
+  }
+
+  .entry-readmore {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 1.1rem;
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+  .entry-readmore:hover { color: var(--accent-hover); }
+
+  @media (max-width: 640px) {
+    .featured-strip { grid-template-columns: 1fr; }
+    .entry { padding: 1.25rem 1.25rem; }
   }
 </style>

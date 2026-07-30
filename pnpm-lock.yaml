@@ -12,9 +12,15 @@ importers:
         specifier: ^4.16.0
         version: 4.16.19(rollup@4.62.3)(typescript@5.9.3)
     devDependencies:
+      mdast-util-to-string:
+        specifier: ^4.0.0
+        version: 4.0.0
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
+      unist-util-visit:
+        specifier: ^5.1.0
+        version: 5.1.0
 
 packages:
 

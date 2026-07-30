@@ -146,6 +146,153 @@ const older = sorted[idx - 1];
     border-top: 1px dashed var(--border);
     margin: 2.5rem 0;
   }
+
+  /* Spark card (h3 💥 #N — ... + adjacent dl.spark-meta) */
+  .day-body section.spark-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin: 2rem 0;
+    overflow: hidden;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .day-body section.spark-card:hover {
+    border-color: var(--accent);
+  }
+
+  .day-body section.spark-card > h3 {
+    margin: 0;
+    padding: 1rem 1.25rem;
+    background: var(--bg-alt);
+    color: var(--text);
+    font-family: var(--font-serif);
+    font-size: 1.2rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .day-body dl.spark-meta {
+    display: grid;
+    grid-template-columns: 7rem 1fr;
+    gap: 0.65rem 1.25rem;
+    margin: 0;
+    padding: 1rem 1.25rem 1.1rem;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  .day-body .spark-meta dt {
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding-top: 0.25rem;
+    align-self: start;
+  }
+
+  .day-body .spark-meta dd {
+    margin: 0;
+    color: var(--text);
+  }
+
+  .day-body .spark-meta dt.dt-score {
+    color: var(--accent);
+  }
+
+  .day-body .spark-meta dd.dd-score {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .day-body .spark-meta .score-num {
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+    min-width: 1.5rem;
+  }
+
+  .day-body .spark-meta .score-bar {
+    display: inline-block;
+    width: 110px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--border);
+    overflow: hidden;
+    flex: 0 0 110px;
+  }
+
+  .day-body .spark-meta .score-bar-fill {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    border-radius: 999px;
+    transition: width 0.4s cubic-bezier(0.2, 0, 0.2, 1);
+  }
+
+  /* 画面 row gets a hint of color so the visual description stands out */
+  .day-body .spark-meta dt:has-text {
+    /* no-op; placeholder for browser consistency */
+  }
+
+  /* Gallery (## 配图) */
+  .day-body .gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+
+  .day-body .gallery figure {
+    margin: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--bg-alt);
+  }
+
+  .day-body .gallery img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    display: block;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+  }
+
+  .day-body .gallery figcaption {
+    padding: 0.6rem 0.85rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-family: var(--font-serif);
+  }
+
+  /* Quote inside a spark card (连接点分析 blockquote) gets softer styling */
+  .day-body section.spark-card blockquote {
+    margin: 0.6rem 1.25rem 0.6rem;
+    background: var(--bg-alt);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+
+  /* First paragraph of a spark card (often 连接点) reads as the lede */
+  .day-body section.spark-card > p:first-of-type {
+    margin: 0.85rem 1.25rem 0;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+  }
+
+  @media (max-width: 640px) {
+    .day-body dl.spark-meta { grid-template-columns: 1fr; gap: 0.25rem 0; }
+    .day-body .spark-meta dt { padding-top: 0.5rem; }
+    .day-body .spark-meta dt:first-child { padding-top: 0; }
+  }
 </style>
 
 <style>
