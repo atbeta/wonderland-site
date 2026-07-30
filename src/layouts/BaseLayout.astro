@@ -1,0 +1,354 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const {
+  title,
+  description = 'Wonderland — nightly cross-domain idea collisions, auto-published every morning.',
+} = Astro.props;
+
+const currentPath = Astro.url.pathname;
+const isHome = currentPath === '/' || currentPath === '';
+const homeClass = isHome ? 'active' : '';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#0d0d12" />
+    <title>{title}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Newsreader:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+    <script is:inline>
+      (function() {
+        var t = localStorage.getItem('wonderland-theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+      })();
+    </script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a href="/" class="logo">
+          <span class="logo-glyph">✺</span>
+          <span class="logo-text">Wonderland</span>
+          <span class="logo-tag">nightly idea collisions</span>
+        </a>
+        <nav class="nav-links">
+          <a href="/" class={`nav-link ${homeClass}`}>Log</a>
+          <a href="/about/" class={`nav-link ${currentPath.startsWith('/about') ? 'active' : ''}`}>About</a>
+          <a href="https://github.com/atbeta/wonderland-site" class="nav-link nav-icon-link" target="_blank" rel="noopener" title="GitHub" aria-label="GitHub">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+            </svg>
+          </a>
+          <button id="theme-toggle" class="theme-btn nav-icon-btn" aria-label="Toggle theme">
+            <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/>
+              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <span class="logo">
+            <span class="logo-glyph">✺</span>
+            <span class="logo-text">Wonderland</span>
+          </span>
+          <p class="footer-tagline">A nightly machine that collides two domains it has never met, asks a constraint no one asked, and writes down the sparks.</p>
+        </div>
+        <p class="footer-copy">
+          Auto-published · {new Date().getUTCFullYear()} · built with <a href="https://astro.build" target="_blank" rel="noopener">Astro</a>
+        </p>
+      </div>
+    </footer>
+
+    <script is:inline>
+      (function() {
+        var btn = document.getElementById('theme-toggle');
+        var html = document.documentElement;
+
+        function effectiveTheme() {
+          var stored = localStorage.getItem('wonderland-theme');
+          if (stored === 'dark' || stored === 'light') return stored;
+          return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        btn.addEventListener('click', function() {
+          var next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+          html.setAttribute('data-theme', next);
+          localStorage.setItem('wonderland-theme', next);
+        });
+      })();
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --bg: #fbfbf8;
+    --bg-alt: #f2f1ec;
+    --bg-card: #ffffff;
+    --text: #16151a;
+    --text-muted: #5a5868;
+    --text-dim: #8c8a99;
+    --border: #e3e0d8;
+    --accent: #c0541f;
+    --accent-hover: #a4421a;
+    --accent-subtle: #faeede;
+    --code-bg: #f2f1ec;
+    --code-text: #16151a;
+    --shadow-sm: 0 1px 3px rgba(20,15,10,0.05);
+    --shadow: 0 1px 3px rgba(20,15,10,0.05), 0 4px 12px rgba(20,15,10,0.04);
+    --shadow-md: 0 2px 6px rgba(20,15,10,0.06), 0 8px 24px rgba(20,15,10,0.05);
+    --shadow-lg: 0 4px 12px rgba(20,15,10,0.08), 0 16px 40px rgba(20,15,10,0.06);
+    --radius: 8px;
+    --radius-sm: 6px;
+    --radius-lg: 14px;
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-serif: 'Newsreader', Georgia, serif;
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0d0c10;
+    --bg-alt: #15141a;
+    --bg-card: #191822;
+    --text: #f1ede0;
+    --text-muted: #9590a0;
+    --text-dim: #5e5a68;
+    --border: #29262f;
+    --accent: #ff8a3d;
+    --accent-hover: #ffa15d;
+    --accent-subtle: #251a0e;
+    --code-bg: #15141a;
+    --code-text: #f1ede0;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow: 0 1px 3px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.3);
+    --shadow-md: 0 2px 6px rgba(0,0,0,0.45), 0 8px 24px rgba(0,0,0,0.3);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,0.5), 0 16px 40px rgba(0,0,0,0.35);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d0c10;
+      --bg-alt: #15141a;
+      --bg-card: #191822;
+      --text: #f1ede0;
+      --text-muted: #9590a0;
+      --text-dim: #5e5a68;
+      --border: #29262f;
+      --accent: #ff8a3d;
+      --accent-hover: #ffa15d;
+      --accent-subtle: #251a0e;
+      --code-bg: #15141a;
+      --code-text: #f1ede0;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow: 0 1px 3px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.3);
+      --shadow-md: 0 2px 6px rgba(0,0,0,0.45), 0 8px 24px rgba(0,0,0,0.3);
+      --shadow-lg: 0 4px 12px rgba(0,0,0,0.5), 0 16px 40px rgba(0,0,0,0.35);
+    }
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 16px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  main { flex: 1; }
+
+  a { color: var(--accent); text-decoration: none; transition: color 0.15s; }
+  a:hover { color: var(--accent-hover); }
+
+  img { max-width: 100%; height: auto; }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    font-weight: 450;
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+  }
+
+  pre {
+    font-family: var(--font-mono);
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow-x: auto;
+    line-height: 1.55;
+    font-size: 0.8125rem;
+  }
+
+  pre code { background: none; padding: 0; font-size: inherit; }
+
+  .container {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: color-mix(in srgb, var(--bg) 84%, transparent);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .header-inner {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--text);
+    font-weight: 700;
+    font-size: 1.0625rem;
+    letter-spacing: -0.02em;
+  }
+
+  .logo:hover { color: var(--text); }
+
+  .logo-glyph {
+    color: var(--accent);
+    font-size: 1.35rem;
+    line-height: 1;
+    font-weight: 400;
+  }
+
+  .logo-tag {
+    color: var(--text-dim);
+    font-weight: 400;
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 640px) { .logo-tag { display: none; } }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+  }
+
+  .nav-link {
+    padding: 0.4rem 0.7rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: color 0.15s, background 0.15s;
+  }
+  .nav-link:hover { color: var(--text); background: var(--bg-alt); }
+  .nav-link.active { color: var(--accent); background: var(--accent-subtle); }
+
+  .nav-icon-link, .nav-icon-btn, .theme-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+  }
+  .nav-icon-link:hover, .nav-icon-btn:hover, .theme-btn:hover {
+    color: var(--text);
+    background: var(--bg-alt);
+  }
+
+  .icon-sun { display: block; }
+  .icon-moon { display: none; }
+
+  :root[data-theme="dark"] .icon-sun { display: none; }
+  :root[data-theme="dark"] .icon-moon { display: block; }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .icon-sun { display: none; }
+    :root:not([data-theme="light"]) .icon-moon { display: block; }
+  }
+
+  .site-footer {
+    border-top: 1px solid var(--border);
+    background: var(--bg-alt);
+    margin-top: 4rem;
+  }
+
+  .footer-inner {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .footer-brand .logo {
+    font-size: 1rem;
+  }
+
+  .footer-tagline {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    font-style: italic;
+    font-family: var(--font-serif);
+    max-width: 56ch;
+    line-height: 1.55;
+    margin-top: 0.4rem;
+  }
+
+  .footer-copy {
+    color: var(--text-dim);
+    font-size: 0.75rem;
+  }
+</style>

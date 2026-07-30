@@ -1,0 +1,17 @@
+{
+  "name": "wonderland-site",
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "sync:archive": "bash scripts/sync-archive.sh"
+  },
+  "dependencies": {
+    "astro": "^4.16.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}
