@@ -72,6 +72,8 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
         <span class="latest-meta">{latest.cardCount} sparks · {latest.featuredSparks.length} featured · {latest.collisions.length} collisions</span>
       </div>
     )}
+
+    <p class="build-stamp">v2 · {new Date().toISOString().slice(0, 10)} · spark cards</p>
   </section>
 
   <section class="log container">
@@ -207,6 +209,15 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
   .latest-meta {
     color: var(--text-muted);
     font-size: 0.8125rem;
+  }
+
+  .build-stamp {
+    margin-top: 0.75rem;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
   }
 
   .log {
