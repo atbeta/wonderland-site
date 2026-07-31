@@ -2,29 +2,24 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
 
+const MAX_FEATURED_PER_NIGHT = 8;
+
 const allEntries = await getCollection('days');
 const entries = allEntries
   .map((entry) => {
     const body = entry.body || '';
     const titleMatch = body.match(/^# Wonderland\s*[—–-]\s*([^\n(]+?)(?:\s*\(run\s+(\d+)\))?\s*$/m);
 
-    // Find every spark image, paired with its title (alt text or preceding heading).
-    // Each ![#N — Title](url) is a featured spark. We capture groups (n, title, url).
+    // Featured sparks: extract images from the `## 配图` section only.
+    // Spark-card body may also reference images (as the `画面:` line) — those
+    // should NOT count again here.
+    const galleryMatch = body.match(/##\s*配图\s*\n([\s\S]*?)(?=\n##\s|\s*$)/);
+    const galleryBody = galleryMatch?.[1] || '';
     const imageRegex = /!\[#(\d+)\s*[—–-]\s*([^\]]+)\]\(([^)]+)\)/g;
     const featuredSparks = [];
     let m;
-    while ((m = imageRegex.exec(body)) !== null) {
+    while ((m = imageRegex.exec(galleryBody)) !== null) {
       featuredSparks.push({ n: m[1], title: m[2].trim(), url: m[3] });
-    }
-
-    // Fallback: also accept any image after `## 配图` even if alt text differs.
-    if (featuredSparks.length === 0) {
-      const gallery = body.match(/## 配图[^]*?(?=^## |\Z)/m)?.[0] || '';
-      const genericImgRe = /!\[[^\]]*\]\((https?:\/\/[^)]+)\)/g;
-      let g;
-      while ((g = genericImgRe.exec(gallery)) !== null) {
-        featuredSparks.push({ n: '·', title: 'Spark image', url: g[1] });
-      }
     }
 
     const cards = [...body.matchAll(/^###\s+💥\s+#(\d+)\s+[—–-]\s+(.+)$/gm)].map((mm) => ({
@@ -40,7 +35,8 @@ const entries = allEntries
       collisions,
       cardCount: cards.length,
       cards,
-      featuredSparks,
+      featuredSparks: featuredSparks.slice(0, MAX_FEATURED_PER_NIGHT),
+      hasMoreFeatured: featuredSparks.length > MAX_FEATURED_PER_NIGHT,
       topCards: cards.slice(0, 3),
     };
   })
@@ -57,33 +53,31 @@ const latest = entries[0];
 const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
 ---
 
-<BaseLayout title={`Wonderland — ${entries.length} nights, ${totalCards} sparks`}>
+<BaseLayout title="Wonderland — 跨域灵感日志" description="每天把两个陌生的领域碰撞一次，记下产生的火花。">
   <section class="hero container">
-    <p class="kicker">Nightly idea collisions · auto-published every morning</p>
-    <h1 class="title">A machine that crosses wires between domains, then asks <em>what if</em>.</h1>
+    <p class="kicker">跨域灵感日志</p>
+    <h1 class="title">把两个陌生的领域撞在一起，看会冒出什么火花。</h1>
     <p class="lede">
-      Every night, Wonderland pairs two fields it has never met, adds a constraint no one asked for,
-      and writes down the sparks. The full night — search trails, anchors, and side-quest notes —
-      publishes here each morning at 04:30 CST.
+      Wonderland 是一个每天运行的实验：随机抽两个看似无关的领域，
+      强加一个不可能的约束，搜两三个真实锚点，然后写下产生的火花。
+      不是创意写作练习，不是生产力工具——是一台<em>专挑跨界的硬通货</em>的机器。
     </p>
     {latest && (
       <div class="latest-cta">
-        <a href={`/days/${latest.slug}/`} class="btn-primary">Read {dateOfLatest} →</a>
-        <span class="latest-meta">{latest.cardCount} sparks · {latest.featuredSparks.length} featured · {latest.collisions.length} collisions</span>
+        <a href={`/days/${latest.slug}/`} class="btn-primary">看 {dateOfLatest} 的火花 →</a>
+        <span class="latest-meta">{latest.cardCount} 张卡片 · {latest.collisions.length} 组碰撞</span>
       </div>
     )}
-
-    <p class="build-stamp">v2 · {new Date().toISOString().slice(0, 10)} · spark cards</p>
   </section>
 
   <section class="log container">
     <header class="log-header">
-      <h2>The Log</h2>
-      <p class="count">{entries.length} night{entries.length === 1 ? '' : 's'} · {totalCards} sparks · {totalFeatured} featured</p>
+      <h2>日志</h2>
+      <p class="count">{entries.length} 个夜晚 · 共 {totalCards} 张卡片</p>
     </header>
 
     {entries.length === 0 ? (
-      <p class="empty">No nights yet. Run the sync script to publish the first archive.</p>
+      <p class="empty">还没有内容。先跑一次同步脚本把 archive 发布上来。</p>
     ) : (
       <ol class="entry-list" reversed>
         {entries.map((entry) => (
@@ -91,18 +85,16 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
             <header class="entry-head">
               <h3 class="entry-date">
                 {entry.dateLabel}
-                {entry.runHint && <span class="run-badge">run {entry.runHint}</span>}
+                {entry.runHint && <span class="run-badge">第 {entry.runHint} 轮</span>}
               </h3>
               <p class="entry-meta">
-                <span>{entry.cardCount} sparks</span>
+                <span>{entry.cardCount} 张卡片</span>
                 {entry.featuredSparks.length > 0 && (
                   <>
                     <span class="dot">·</span>
-                    <span>{entry.featuredSparks.length} featured</span>
+                    <span>{entry.featuredSparks.length} 张配图</span>
                   </>
                 )}
-                <span class="dot">·</span>
-                <span>{entry.collisions.length} collisions</span>
               </p>
             </header>
 
@@ -137,7 +129,7 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
             )}
 
             <a href={`/days/${entry.slug}/`} class="entry-readmore">
-              Read the full night →
+              展开这一晚 →
             </a>
           </li>
         ))}
@@ -165,7 +157,7 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
     font-family: var(--font-serif);
     font-size: clamp(2rem, 4vw, 3rem);
     font-weight: 600;
-    line-height: 1.1;
+    line-height: 1.15;
     color: var(--text);
     letter-spacing: -0.02em;
     max-width: 22ch;
@@ -177,8 +169,8 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
     margin-top: 1.25rem;
     font-size: 1.0625rem;
     color: var(--text-muted);
-    max-width: 56ch;
-    line-height: 1.7;
+    max-width: 58ch;
+    line-height: 1.75;
   }
 
   .latest-cta {
@@ -209,15 +201,6 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
   .latest-meta {
     color: var(--text-muted);
     font-size: 0.8125rem;
-  }
-
-  .build-stamp {
-    margin-top: 0.75rem;
-    font-size: 0.7rem;
-    color: var(--text-dim);
-    font-family: var(--font-mono);
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
   }
 
   .log {
@@ -330,10 +313,9 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
     font-weight: 500;
   }
 
-  /* Featured sparks strip (带图 spark — main visual hook) */
   .featured-strip {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 1rem;
     margin: 1.25rem 0 1.25rem;
   }

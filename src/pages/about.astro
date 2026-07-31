@@ -2,68 +2,64 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 ---
 
-<BaseLayout title="About — Wonderland">
+<BaseLayout title="关于 — Wonderland">
   <article class="about container">
     <header class="about-head">
-      <p class="kicker">About</p>
-      <h1>The machine behind the sparks</h1>
+      <p class="kicker">关于</p>
+      <h1>火花背后的那台机器</h1>
     </header>
 
     <section class="about-body">
-      <h2>What this is</h2>
+      <h2>本站是什么</h2>
       <p>
-        Wonderland is a nightly bot that does one job: take two fields it has never met,
-        collide them, and write down what sparks. Each night, it picks a core domain
-        (<em>compiler theory</em>, <em>cryptography</em>, <em>neurobiology</em>, ...) and pairs it
-        with a freshly generated guest domain (sometimes friend-like, sometimes adversarial).
-        Then it asks a constraint no one asked for and runs two or three searches to find real
-        anchors — papers, named primitives, dates — so the sparks aren't pretty metaphors but
-        technically possible ideas.
+        Wonderland 是一个每日运行的实验：随机抽两个看似无关的领域，
+        强加一个不可能的约束，搜两三个真实锚点（论文、命名原语、日期），
+        然后把产生的火花写下来。不是创意写作练习，不是生产力工具——
+        是一台<em>专挑跨界的硬通货</em>的机器。
       </p>
       <p>
-        The full nightly output lives here. No newsletter, no app, no login — just a log the
-        machine writes in public.
+        每天的完整输出都在这里。不发 newsletter，不做 app，不开账号——
+        就一个机器在公开写日志。
       </p>
 
-      <h2>How a night works</h2>
+      <h2>每个火花是怎么写出来的</h2>
       <ol>
-        <li><strong>04:00 CST</strong> — Wonderland cron runs (odd-numbered days).</li>
-        <li>Loads the domain pool, picks 2-3 collision pairs, runs each through 2-3 searches.</li>
-        <li>Produces 4-15 spark cards per pair; filters out anything below surprise=7 or actionability=8.</li>
-        <li>Picks the top 1-2 sparks per pair, generates a public image for each, uploads to PicFast.</li>
-        <li>Writes <code>archive/YYYY-MM-DD.md</code> with the full night, top cards inlined, anchors cited.</li>
-        <li><strong>04:30 CST</strong> — A second cron syncs the archive into this site and pushes it live.</li>
-        <li>You can read it the next morning.</li>
+        <li><strong>抽取</strong> —— 从领域池里挑一对相邻或敌对的组合</li>
+        <li><strong>强约束</strong> —— 给这组合加一个不请自来的限制（"如果时间倒回 1995 年？"、"如果必须用游戏机制？"、"如果这系统必须能自我修复？"）</li>
+        <li><strong>搜锚点</strong> —— 跑两三次搜索找真实可点击的参考文献（实验室、原语、引用）</li>
+        <li><strong>筛卡片</strong> —— 只保留惊讶度 ≥ 7 或可行动度 ≥ 8 的火花；其他丢掉</li>
+        <li><strong>配图</strong> —— 每组选 Top 1-2 张做视觉隐喻，传到图床</li>
+        <li><strong>落盘</strong> —— 整晚写成一页，第二天发布</li>
       </ol>
 
-      <h2>The card anatomy</h2>
-      <p>Every spark follows the same skeleton so the ideas stay comparable night to night:</p>
+      <h2>每张卡片的解剖</h2>
+      <p>所有火花都按同一骨架写，方便夜与夜之间的对比：</p>
       <ul>
-        <li><strong>碰撞</strong> — the two domains + the constraint</li>
-        <li><strong>连接点</strong> — the mechanical bridge (often a named paper, lab, or primitive)</li>
-        <li><strong>锚点</strong> — references you can click and verify</li>
-        <li><strong>族</strong> — type: prototype, structural-isomorphism, sonification, cultural-metaphor, …</li>
-        <li><strong>惊讶度 / 具体度 / 可行动度</strong> — three 1-10 scores</li>
-        <li><strong>如果要做</strong> — one concrete sentence describing the next experiment, sketch, or essay</li>
+        <li><strong>碰撞</strong> —— 两个领域 + 约束</li>
+        <li><strong>连接点</strong> —— 真正的桥（往往是某个有名字的论文 / 实验室 / 原语）</li>
+        <li><strong>锚点</strong> —— 你可以点击验证的引用</li>
+        <li><strong>族</strong> —— 类型：装置/原型、同构、声化、文化隐喻……</li>
+        <li><strong>惊讶度 / 具体度 / 可行动度</strong> —— 三个 1-10 分</li>
+        <li><strong>如果要做</strong> —— 一句话：下一步实验 / 草图 / 文章</li>
       </ul>
 
-      <h2>What it isn't</h2>
+      <h2>它不是什么</h2>
       <p>
-        Not a productivity tool, not a "creative writing prompt" generator. Wonderland is biased
-        toward ideas that <em>could</em> actually be built or tested. Half the sparks never ship.
-        That's the filter.
+        不是生产力工具，不是 prompt 模板。Wonderland 只偏向
+        <em>真正能动手做或动手测</em>的想法。一半火花永远不会 ship——
+        这就是筛选标准。
       </p>
 
-      <h2>Source & mechanism</h2>
+      <h2>技术</h2>
       <p>
-        The site is a static Astro build, auto-deployed to Vercel from a GitHub repo.
-        The bot itself lives in <a href="https://github.com/atbeta" target="_blank" rel="noopener">atbeta</a>'s workspace. Search is Brave / Tavily /
-        Firecrawl via mcp-search. Images are Flux via local ComfyUI, hosted on PicFast.
+        站点是 Astro 静态站，git push 自动部署到 Vercel。
+        搜索走 mcp-search，图片本地 ComfyUI Flux 生成后传到 PicFast。
+        全部源码公开。
       </p>
     </section>
 
     <p class="back">
-      <a href="/">← Back to the log</a>
+      <a href="/">← 回到日志</a>
     </p>
   </article>
 </BaseLayout>

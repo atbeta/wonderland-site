@@ -38,17 +38,17 @@ const newer = sorted[idx + 1];
 const older = sorted[idx - 1];
 ---
 
-<BaseLayout title={`${dateLabel}${runHint ? ` (run ${runHint})` : ''} — Wonderland`}>
+<BaseLayout title={`${dateLabel}${runHint ? `（第 ${runHint} 轮）` : ''} — Wonderland`}>
   <article class="day container">
     <nav class="back-link">
-      <a href="/">← The Log</a>
+      <a href="/">← 日志</a>
     </nav>
 
     <header class="day-head">
-      <p class="day-meta">Wonderland · Auto-published night</p>
+      <p class="day-meta">跨域灵感日志</p>
       <h1 class="day-title">
         {dateLabel}
-        {runHint && <span class="day-run">run {runHint}</span>}
+        {runHint && <span class="day-run">第 {runHint} 轮</span>}
       </h1>
       {collisionToc.length > 0 && (
         <ul class="day-toc">
@@ -68,16 +68,16 @@ const older = sorted[idx - 1];
         <a href={`/days/${older.id}/`} class="day-nav-link prev">
           <span class="nav-arrow">←</span>
           <span class="nav-meta">
-            <span class="nav-kicker">Earlier night</span>
-            <span class="nav-title">{older.dateLabel}{older.runHint ? ` · run ${older.runHint}` : ''}</span>
+            <span class="nav-kicker">更早一晚</span>
+            <span class="nav-title">{older.dateLabel}{older.runHint ? ` · 第 ${older.runHint} 轮` : ''}</span>
           </span>
         </a>
       ) : <span class="day-nav-spacer" />}
       {newer ? (
         <a href={`/days/${newer.id}/`} class="day-nav-link next">
           <span class="nav-meta">
-            <span class="nav-kicker">Newer night</span>
-            <span class="nav-title">{newer.dateLabel}{newer.runHint ? ` · run ${newer.runHint}` : ''}</span>
+            <span class="nav-kicker">更新一晚</span>
+            <span class="nav-title">{newer.dateLabel}{newer.runHint ? ` · 第 ${newer.runHint} 轮` : ''}</span>
           </span>
           <span class="nav-arrow">→</span>
         </a>

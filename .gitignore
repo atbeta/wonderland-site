@@ -6,3 +6,5 @@ dist/
 .vercel
 .cursor/
 .env*
+memory/
+astro.config.test.mjs
