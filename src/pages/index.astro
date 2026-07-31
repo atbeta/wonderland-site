@@ -10,16 +10,20 @@ const entries = allEntries
     const body = entry.body || '';
     const titleMatch = body.match(/^# Wonderland\s*[—–-]\s*([^\n(]+?)(?:\s*\(run\s+(\d+)\))?\s*$/m);
 
-    // Featured sparks: extract images from the `## 配图` section only.
-    // Spark-card body may also reference images (as the `画面:` line) — those
-    // should NOT count again here.
-    const galleryMatch = body.match(/##\s*配图\s*\n([\s\S]*?)(?=\n##\s|\s*$)/);
-    const galleryBody = galleryMatch?.[1] || '';
-    const imageRegex = /!\[#(\d+)\s*[—–-]\s*([^\]]+)\]\(([^)]+)\)/g;
+    // Featured sparks: walk every spark card and pull the image URL that lives
+    // right after its `**画面**` line. The image lives next to the spark it
+    // belongs to, not in a separate gallery section.
+    const sparkBlockRe = /^###\s+💥\s+#(\d+)\s+[—–-]\s+([^\n]+)\n([\s\S]*?)(?=^###\s|^##\s|\Z)/gm;
     const featuredSparks = [];
-    let m;
-    while ((m = imageRegex.exec(galleryBody)) !== null) {
-      featuredSparks.push({ n: m[1], title: m[2].trim(), url: m[3] });
+    let sp;
+    while ((sp = sparkBlockRe.exec(body)) !== null) {
+      const n = sp[1];
+      const title = sp[2].trim();
+      const block = sp[3];
+      const imgMatch = block.match(/!\[\s*#\d+\s*[—–-]\s*([^\]]+)\]\(([^)]+)\)/);
+      if (imgMatch) {
+        featuredSparks.push({ n, title: title.replace(/\s*[:：].*$/, ''), url: imgMatch[2] });
+      }
     }
 
     const cards = [...body.matchAll(/^###\s+💥\s+#(\d+)\s+[—–-]\s+(.+)$/gm)].map((mm) => ({
@@ -73,7 +77,7 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
   <section class="log container">
     <header class="log-header">
       <h2>日志</h2>
-      <p class="count">{entries.length} 个夜晚 · 共 {totalCards} 张卡片</p>
+      <p class="count">{entries.length} 期 · 共 {totalCards} 张卡片</p>
     </header>
 
     {entries.length === 0 ? (
@@ -85,7 +89,7 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
             <header class="entry-head">
               <h3 class="entry-date">
                 {entry.dateLabel}
-                {entry.runHint && <span class="run-badge">第 {entry.runHint} 轮</span>}
+                {entry.runHint && <span class="run-badge">第 {entry.runHint} 期</span>}
               </h3>
               <p class="entry-meta">
                 <span>{entry.cardCount} 张卡片</span>

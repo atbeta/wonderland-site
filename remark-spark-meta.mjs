@@ -36,14 +36,19 @@ function strongText(node) {
 }
 
 // Render an inline node array to a plain string (best-effort, no HTML escapes).
+// Image / link nodes are reconstructed as markdown so the rendered HTML still
+// shows them. Code becomes inline backticks.
 function inlineToPlain(children) {
   if (!Array.isArray(children)) return '';
   return children
     .map((c) => {
       if (c.type === 'text') return c.value;
-      if (c.type === 'strong' || c.type === 'emphasis') return inlineToPlain(c.children);
-      if (c.type === 'inlineCode') return c.value;
-      if (c.type === 'link') return inlineToPlain(c.children);
+      if (c.type === 'strong') return `**${inlineToPlain(c.children)}**`;
+      if (c.type === 'emphasis') return `*${inlineToPlain(c.children)}*`;
+      if (c.type === 'inlineCode') return `\`${c.value}\``;
+      if (c.type === 'link') return `[${inlineToPlain(c.children)}](${c.url || ''})`;
+      if (c.type === 'image') return `![${c.alt || ''}](${c.url || ''})`;
+      if (c.type === 'break') return '\n';
       return '';
     })
     .join('');
@@ -113,7 +118,19 @@ export default function remarkWonderlandSparkMeta() {
             ddInner = escapeHtml(value);
           }
         } else {
-          ddInner = escapeHtml(value.trim());
+          // If the value carries an image, splice it out and emit as real <img>
+          // so the browser renders it. Otherwise fall back to escaped text.
+          const imgMatch = value.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+          if (imgMatch) {
+            const alt = escapeHtml(imgMatch[1]);
+            const url = escapeHtml(imgMatch[2]);
+            const text = value.replace(imgMatch[0], '').trim();
+            const textPart = text ? escapeHtml(text.replace(/^[:：\s]+/, '')) : '';
+            ddInner = (textPart ? `${textPart}<br>` : '') +
+                      `<img class="dd-image" src="${url}" alt="${alt}" loading="lazy" />`;
+          } else {
+            ddInner = escapeHtml(value.trim());
+          }
         }
         return `<dt class="${dtClass}">${escapeHtml(key)}</dt>` +
                `<dd class="${ddClass}">${ddInner}</dd>`;
