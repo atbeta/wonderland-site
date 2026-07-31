@@ -38,14 +38,14 @@ const newer = sorted[idx + 1];
 const older = sorted[idx - 1];
 ---
 
-<BaseLayout title={`${dateLabel}${runHint ? `（第 ${runHint} 期）` : ''} - Wonderland`}>
+<BaseLayout title={`${dateLabel}${runHint ? ` · 第 ${runHint} 期` : ''} — Wonderland`}>
   <article class="day container">
     <nav class="back-link">
       <a href="/">← 日志</a>
     </nav>
 
     <header class="day-head">
-      <p class="day-meta">跨域灵感日志</p>
+      <p class="day-meta">{runHint ? `第 ${runHint} 期` : dateLabel}</p>
       <h1 class="day-title">
         {dateLabel}
         {runHint && <span class="day-run">第 {runHint} 期</span>}

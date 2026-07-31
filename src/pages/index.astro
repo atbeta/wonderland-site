@@ -60,15 +60,15 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
 <BaseLayout title="Wonderland — 跨域灵感日志" description="每天把两个陌生的领域碰撞一次，记下产生的火花。">
   <section class="hero container">
     <p class="kicker">跨域灵感日志</p>
-    <h1 class="title">把两个陌生的领域撞在一起，看会冒出什么火花。</h1>
+    <h1 class="title">遴选两个陌生的领域碰撞，看会冒出什么火花。</h1>
     <p class="lede">
-      Wonderland 是一个每天运行的实验：随机抽两个看似无关的领域，
-      强加一个不可能的约束，搜两三个真实锚点，然后写下产生的火花。
-      不是创意写作练习，不是生产力工具——是一台<em>专挑跨界的硬通货</em>的机器。
+      Wonderland 是一个跨领域灵感的常态化实验：每日遴选两个看似无关的领域，
+      引入一项约束命题，检索相关文献锚点，记录所产生的火花。
+      此处不展示创作过程，只呈现最终的火花与参考文献。
     </p>
     {latest && (
       <div class="latest-cta">
-        <a href={`/days/${latest.slug}/`} class="btn-primary">看 {dateOfLatest} 的火花 →</a>
+        <a href={`/days/${latest.slug}/`} class="btn-primary">查看本期 →</a>
         <span class="latest-meta">{latest.cardCount} 张卡片 · {latest.collisions.length} 组碰撞</span>
       </div>
     )}
@@ -77,7 +77,7 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
   <section class="log container">
     <header class="log-header">
       <h2>日志</h2>
-      <p class="count">{entries.length} 期 · 共 {totalCards} 张卡片</p>
+      <p class="count">共 {entries.length} 期 · {totalCards} 张卡片</p>
     </header>
 
     {entries.length === 0 ? (
@@ -133,7 +133,7 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
             )}
 
             <a href={`/days/${entry.slug}/`} class="entry-readmore">
-              展开这一晚 →
+              查看全部 →
             </a>
           </li>
         ))}

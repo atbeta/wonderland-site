@@ -104,9 +104,13 @@ export default function remarkWonderlandSparkMeta() {
         const isScore = SCORE_KEYS.has(key);
         const dtClass = isScore ? 'dt-score' : 'dt-meta';
         const ddClass = isScore ? 'dd-score' : 'dd-meta';
+
+        // Strip the leading ": " that comes from `**K**: value` markdown.
+        // Image / link syntax inside the value is preserved and re-emitted.
+        const cleaned = value.replace(/^[\s]*[:：]\s*/, '');
         let ddInner;
         if (isScore) {
-          const numMatch = value.match(/(\d+)/);
+          const numMatch = cleaned.match(/(\d+)/);
           const num = numMatch ? Number(numMatch[1]) : null;
           if (num !== null) {
             ddInner =
@@ -115,21 +119,20 @@ export default function remarkWonderlandSparkMeta() {
                 `<span class="score-bar-fill" style="width:${num * 10}%"></span>` +
               `</span>`;
           } else {
-            ddInner = escapeHtml(value);
+            ddInner = escapeHtml(cleaned);
           }
         } else {
           // If the value carries an image, splice it out and emit as real <img>
           // so the browser renders it. Otherwise fall back to escaped text.
-          const imgMatch = value.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+          const imgMatch = cleaned.match(/!\[([^\]]*)\]\(([^)]+)\)/);
           if (imgMatch) {
             const alt = escapeHtml(imgMatch[1]);
             const url = escapeHtml(imgMatch[2]);
-            const text = value.replace(imgMatch[0], '').trim();
-            const textPart = text ? escapeHtml(text.replace(/^[:：\s]+/, '')) : '';
-            ddInner = (textPart ? `${textPart}<br>` : '') +
+            const text = cleaned.replace(imgMatch[0], '').trim();
+            ddInner = (text ? `${escapeHtml(text)}<br>` : '') +
                       `<img class="dd-image" src="${url}" alt="${alt}" loading="lazy" />`;
           } else {
-            ddInner = escapeHtml(value.trim());
+            ddInner = escapeHtml(cleaned.trim());
           }
         }
         return `<dt class="${dtClass}">${escapeHtml(key)}</dt>` +

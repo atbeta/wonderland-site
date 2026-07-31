@@ -6,60 +6,56 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   <article class="about container">
     <header class="about-head">
       <p class="kicker">关于</p>
-      <h1>火花背后的那台机器</h1>
+      <h1>关于此站点</h1>
     </header>
 
     <section class="about-body">
       <h2>本站是什么</h2>
       <p>
-        Wonderland 是一个每日运行的实验：随机抽两个看似无关的领域，
-        强加一个不可能的约束，搜两三个真实锚点（论文、命名原语、日期），
-        然后把产生的火花写下来。不是创意写作练习，不是生产力工具——
-        是一台<em>专挑跨界的硬通货</em>的机器。
-      </p>
-      <p>
-        每天的完整输出都在这里。不发 newsletter，不做 app，不开账号——
-        就一个机器在公开写日志。
+        Wonderland 是一个跨领域灵感的常态化实验：每日遴选两个看似无关的领域，
+        引入一项约束命题，检索相关文献锚点，而后记录所产生的火花。
+        此处仅收录火花本身及其参考文献——不含创作过程、不含营销内容、
+        不含订阅入口。
       </p>
 
-      <h2>每个火花是怎么写出来的</h2>
+      <h2>一期的工作流程</h2>
       <ol>
-        <li><strong>抽取</strong> —— 从领域池里挑一对相邻或敌对的组合</li>
-        <li><strong>强约束</strong> —— 给这组合加一个不请自来的限制（"如果时间倒回 1995 年？"、"如果必须用游戏机制？"、"如果这系统必须能自我修复？"）</li>
-        <li><strong>搜锚点</strong> —— 跑两三次搜索找真实可点击的参考文献（实验室、原语、引用）</li>
-        <li><strong>筛卡片</strong> —— 只保留惊讶度 ≥ 7 或可行动度 ≥ 8 的火花；其他丢掉</li>
-        <li><strong>配图</strong> —— 每组选 Top 1-2 张做视觉隐喻，传到图床</li>
-        <li><strong>落盘</strong> —— 整晚写成一页，第二天发布</li>
+        <li><strong>遴选</strong> —— 从领域池中抽取两个相邻或对偶的领域</li>
+        <li><strong>约束命题</strong> —— 引入一项不请自来的限制（例如：若数据规模放大 10⁴ 倍？若该系统必须具备自修复能力？）</li>
+        <li><strong>文献锚定</strong> —— 对每组碰撞执行二至三次检索，确认真实可引用的参考文献</li>
+        <li><strong>筛选</strong> —— 仅保留惊讶度 ≥ 7 或可行动度 ≥ 8 的火花；其余舍弃</li>
+        <li><strong>插图</strong> —— 每组遴选 Top 1-2 张火花生成视觉隐喻，并托管于公开图床</li>
+        <li><strong>归档</strong> —— 整期汇为一页，次日发布</li>
       </ol>
 
-      <h2>每张卡片的解剖</h2>
-      <p>所有火花都按同一骨架写，方便期与期之间的对比：</p>
+      <h2>火花卡片的标准结构</h2>
+      <p>所有火花均按统一骨架记录，以便跨期对照：</p>
       <ul>
-        <li><strong>碰撞</strong> —— 两个领域 + 约束</li>
-        <li><strong>连接点</strong> —— 真正的桥（往往是某个有名字的论文 / 实验室 / 原语）</li>
-        <li><strong>锚点</strong> —— 你可以点击验证的引用</li>
-        <li><strong>族</strong> —— 类型：装置/原型、同构、声化、文化隐喻……</li>
-        <li><strong>惊讶度 / 具体度 / 可行动度</strong> —— 三个 1-10 分</li>
-        <li><strong>如果要做</strong> —— 一句话：下一步实验 / 草图 / 文章</li>
+        <li><strong>碰撞</strong> —— 两个领域 + 约束命题</li>
+        <li><strong>连接点</strong> —— 真正的结构桥梁（通常引用某篇论文 / 实验室 / 命名原语）</li>
+        <li><strong>锚点</strong> —— 可点击验证的参考文献</li>
+        <li><strong>族</strong> —— 分类：装置/原型、同构、声化、文化隐喻……</li>
+        <li><strong>惊讶度 / 具体度 / 可行动度</strong> —— 三项 1-10 评分</li>
+        <li><strong>如果要做</strong> —— 一句话：指明下一步的实验 / 草图 / 论述</li>
       </ul>
 
-      <h2>它不是什么</h2>
+      <h2>甄选标准</h2>
       <p>
-        不是生产力工具，不是 prompt 模板。Wonderland 只偏向
-        <em>真正能动手做或动手测</em>的想法。一半火花永远不会 ship——
-        这就是筛选标准。
+        偏好真正可以动手实现或动手验证的想法。
+        其中相当部分永远不会落地——这属于甄选过程的固有特性。
+        任何在脱离检索结果的前提下即可推断的命题，
+        将被视作陈词滥调而舍弃。
       </p>
 
-      <h2>技术</h2>
+      <h2>技术架构</h2>
       <p>
-        站点是 Astro 静态站，git push 自动部署到 Vercel。
-        搜索走 mcp-search，图片本地 ComfyUI Flux 生成后传到 PicFast。
-        全部源码公开。
+        本站采用 Astro 静态构建，源代码托管于 GitHub，部署由 Vercel 自动接管。
+        搜索由 mcp-search 提供，图像经本地 ComfyUI Flux 生成后托管于 PicFast。
       </p>
     </section>
 
     <p class="back">
-      <a href="/">← 回到日志</a>
+      <a href="/">← 返回日志</a>
     </p>
   </article>
 </BaseLayout>
