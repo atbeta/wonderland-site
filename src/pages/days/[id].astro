@@ -16,6 +16,7 @@ const { Content } = await render(entry);
 const body = entry.body || '';
 const titleMatch = body.match(/^# Wonderland\s*[—–-]\s*([^\n(]+?)(?:\s*\(run\s+(\d+)\))?\s*$/m);
 const collisionToc = [...body.matchAll(/^##\s+组合\s+\d+[：:]\s*(.+?)\s*$/gm)].map((m) => m[1].trim());
+const cardCount = (body.match(/^###\s+💥/gm) || []).length;
 
 const dateLabel = titleMatch?.[1]?.trim() || entry.id;
 const runHint = titleMatch?.[2] || null;
@@ -34,27 +35,40 @@ const sorted = allEntries
     return Number(b.runHint || 1) - Number(a.runHint || 1);
   });
 const idx = sorted.findIndex((e) => e.id === entry.id);
-const newer = sorted[idx + 1];
-const older = sorted[idx - 1];
+// sorted is newest-first: idx-1 is the newer issue, idx+1 the older one.
+const newer = sorted[idx - 1];
+const older = sorted[idx + 1];
 ---
 
 <BaseLayout title={`${dateLabel} — Wonderland`}>
+  <div class="read-progress" id="read-progress" aria-hidden="true"></div>
+
   <article class="day container">
     <nav class="back-link">
       <a href="/">← 日志</a>
     </nav>
 
     <header class="day-head">
-      <p class="day-meta">{dateLabel}</p>
-      <h1 class="day-title">
-        {dateLabel}
-      </h1>
+      <p class="day-meta">
+        <span class="day-meta-mono">{dateLabel}</span>
+        {runHint && <span class="day-run">run {runHint}</span>}
+        <span class="day-count">{collisionToc.length} 组碰撞 · {cardCount} 张火花</span>
+      </p>
+      <h1 class="day-title">Wonderland <span class="day-title-sep">—</span> <span class="grad-text">{dateLabel}</span></h1>
       {collisionToc.length > 0 && (
-        <ul class="day-toc">
-          {collisionToc.map((c) => (
-            <li><span class="toc-bullet">↳</span> {c}</li>
-          ))}
-        </ul>
+        <nav class="day-toc" aria-label="本期目录">
+          <p class="toc-kicker">本期目录</p>
+          <ol class="toc-list">
+            {collisionToc.map((c, i) => (
+              <li>
+                <a href={`#collision-${i + 1}`}>
+                  <span class="toc-num">{String(i + 1).padStart(2, '0')}</span>
+                  <span class="toc-text">{c}</span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        </nav>
       )}
     </header>
 
@@ -65,65 +79,106 @@ const older = sorted[idx - 1];
     <nav class="day-nav">
       {older ? (
         <a href={`/days/${older.id}/`} class="day-nav-link prev">
-          <span class="nav-arrow">←</span>
-          <span class="nav-meta">
-            <span class="nav-kicker">更早一期</span>
-            <span class="nav-title">{older.dateLabel}</span>
-          </span>
+          <span class="nav-kicker">← 更早一期</span>
+          <span class="nav-title">{older.dateLabel}</span>
         </a>
       ) : <span class="day-nav-spacer" />}
       {newer ? (
         <a href={`/days/${newer.id}/`} class="day-nav-link next">
-          <span class="nav-meta">
-            <span class="nav-kicker">更新一期</span>
-            <span class="nav-title">{newer.dateLabel}</span>
-          </span>
-          <span class="nav-arrow">→</span>
+          <span class="nav-kicker">更新一期 →</span>
+          <span class="nav-title">{newer.dateLabel}</span>
         </a>
       ) : <span class="day-nav-spacer" />}
     </nav>
   </article>
 </BaseLayout>
 
+<script>
+  // Reading progress bar.
+  (function() {
+    var bar = document.getElementById('read-progress');
+    if (!bar) return;
+    var onScroll = function() {
+      var total = document.documentElement.scrollHeight - window.innerHeight;
+      bar.style.transform = 'scaleX(' + (total > 0 ? Math.min(window.scrollY / total, 1) : 0) + ')';
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+  })();
+
+  // Anchor ids for the 组合 headings so the TOC can jump to them.
+  (function() {
+    var heads = document.querySelectorAll('.day-body h2');
+    var n = 0;
+    heads.forEach(function(h) {
+      if (/^组合\s*\d+/.test(h.textContent || '')) {
+        n++;
+        h.id = 'collision-' + n;
+      }
+    });
+  })();
+
+  // Restructure spark card headings: split "💥 #N — title" into a mono
+  // index chip + serif title. Purely presentational.
+  (function() {
+    document.querySelectorAll('.day-body .spark-card > h3').forEach(function(h) {
+      var text = h.textContent || '';
+      var m = text.match(/^💥\s*#(\d+)\s*[—–-]\s*([\s\S]*)$/);
+      if (!m) return;
+      h.textContent = '';
+      var num = document.createElement('span');
+      num.className = 'spark-index';
+      num.textContent = '№ ' + m[1].padStart(2, '0');
+      var title = document.createElement('span');
+      title.className = 'spark-title';
+      title.textContent = m[2].trim();
+      h.appendChild(num);
+      h.appendChild(title);
+    });
+  })();
+</script>
+
 <style is:global>
   .day-body {
     font-size: 1.0625rem;
-    line-height: 1.75;
+    line-height: 1.85;
     color: var(--text);
   }
 
   .day-body > h1, .day-body > h2, .day-body > h3 {
     font-family: var(--font-serif);
-    letter-spacing: -0.01em;
+    letter-spacing: 0.01em;
     color: var(--text);
   }
 
   .day-body > h1 { display: none; }
 
   .day-body > h2 {
-    font-size: 1.4rem;
-    font-weight: 600;
-    margin: 3rem 0 1rem;
-    padding-bottom: 0.4rem;
+    font-size: 1.5rem;
+    font-weight: 900;
+    margin: 4rem 0 1.25rem;
+    padding-bottom: 0.6rem;
     border-bottom: 1px solid var(--border);
+    scroll-margin-top: 5.5rem;
   }
 
   .day-body > h3 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin: 1.5rem 0 0.5rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 1.75rem 0 0.5rem;
     color: var(--accent);
   }
 
-  .day-body p { margin: 0.8rem 0; }
+  .day-body p { margin: 0.9rem 0; }
 
-  .day-body ul, .day-body ol { margin: 0.8rem 0 0.8rem 1.5rem; }
-  .day-body li { margin: 0.3rem 0; }
+  .day-body ul, .day-body ol { margin: 0.9rem 0 0.9rem 1.5rem; }
+  .day-body li { margin: 0.35rem 0; }
 
   .day-body blockquote {
-    border-left: 3px solid var(--accent);
-    margin: 1rem 0;
-    padding: 0.4rem 0 0.4rem 1rem;
+    border-left: 2px solid transparent;
+    border-image: var(--grad) 1;
+    margin: 1.25rem 0;
+    padding: 0.75rem 0 0.75rem 1.25rem;
     color: var(--text-muted);
     font-style: italic;
     font-family: var(--font-serif);
@@ -135,59 +190,93 @@ const older = sorted[idx - 1];
     display: block;
     width: 100%;
     max-width: 720px;
-    margin: 1.5rem auto;
+    margin: 1.75rem auto;
     border-radius: var(--radius);
     border: 1px solid var(--border);
   }
 
   .day-body hr {
     border: none;
-    border-top: 1px dashed var(--border);
-    margin: 2.5rem 0;
+    margin: 3rem 0;
+    text-align: center;
+  }
+  .day-body hr::after {
+    content: '✺ ✺ ✺';
+    color: var(--text-dim);
+    letter-spacing: 1rem;
+    font-size: 0.75rem;
   }
 
-  /* Spark card (h3 💥 #N — ... + adjacent dl.spark-meta) */
+  /* ---- spark card ---- */
   .day-body section.spark-card {
+    position: relative;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    margin: 2rem 0;
+    margin: 2.5rem 0;
     overflow: hidden;
-    transition: border-color 0.15s, transform 0.15s;
+    box-shadow: var(--shadow);
+    transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+  }
+  .day-body section.spark-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--grad);
+    opacity: 0.55;
+    transition: opacity 0.3s;
   }
   .day-body section.spark-card:hover {
-    border-color: var(--accent);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-md), var(--glow);
   }
+  .day-body section.spark-card:hover::before { opacity: 1; }
 
   .day-body section.spark-card > h3 {
     margin: 0;
-    padding: 1rem 1.25rem;
-    background: var(--bg-alt);
+    padding: 1.25rem 1.5rem 1.1rem 1.75rem;
     color: var(--text);
     font-family: var(--font-serif);
-    font-size: 1.2rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.45;
+    letter-spacing: 0.01em;
     border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .day-body .spark-index {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
   }
 
   .day-body dl.spark-meta {
     display: grid;
-    grid-template-columns: 7rem 1fr;
-    gap: 0.65rem 1.25rem;
+    grid-template-columns: 6.5rem 1fr;
+    gap: 0.9rem 1.5rem;
     margin: 0;
-    padding: 1rem 1.25rem 1.1rem;
+    padding: 1.25rem 1.5rem 1.4rem 1.75rem;
     font-size: 0.9375rem;
-    line-height: 1.6;
+    line-height: 1.75;
   }
 
   .day-body .spark-meta dt {
     color: var(--text-dim);
+    font-family: var(--font-mono);
     font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    padding-top: 0.25rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    padding-top: 0.3rem;
     align-self: start;
   }
 
@@ -197,53 +286,53 @@ const older = sorted[idx - 1];
   }
 
   .day-body .spark-meta dt.dt-score {
-    color: var(--accent);
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
   }
 
   .day-body .spark-meta dd.dd-score {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.65rem;
     flex-wrap: wrap;
   }
 
   .day-body .spark-meta .score-num {
     font-family: var(--font-mono);
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: 0.9375rem;
+    font-weight: 700;
     color: var(--text);
-    min-width: 1.5rem;
+    min-width: 2rem;
+    font-variant-numeric: tabular-nums;
   }
 
   .day-body .spark-meta .score-bar {
     display: inline-block;
-    width: 110px;
-    height: 6px;
+    width: 120px;
+    height: 3px;
     border-radius: 999px;
     background: var(--border);
     overflow: hidden;
-    flex: 0 0 110px;
+    flex: 0 0 120px;
   }
 
   .day-body .spark-meta .score-bar-fill {
     display: block;
     height: 100%;
-    background: var(--accent);
+    background: var(--grad);
     border-radius: 999px;
-    transition: width 0.4s cubic-bezier(0.2, 0, 0.2, 1);
-  }
-
-  /* 画面 row gets a hint of color so the visual description stands out */
-  .day-body .spark-meta dt:has-text {
-    /* no-op; placeholder for browser consistency */
+    transition: width 0.6s cubic-bezier(0.2, 0, 0.2, 1);
   }
 
   /* Gallery (## 配图) */
   .day-body .gallery {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1rem;
-    margin: 1.5rem 0;
+    gap: 1.25rem;
+    margin: 1.75rem 0;
   }
 
   .day-body .gallery figure {
@@ -252,6 +341,11 @@ const older = sorted[idx - 1];
     border-radius: var(--radius);
     overflow: hidden;
     background: var(--bg-alt);
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+  .day-body .gallery figure:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
   }
 
   .day-body .gallery img {
@@ -266,8 +360,8 @@ const older = sorted[idx - 1];
   }
 
   .day-body .gallery figcaption {
-    padding: 0.6rem 0.85rem;
-    font-size: 0.85rem;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.875rem;
     color: var(--text-muted);
     font-family: var(--font-serif);
   }
@@ -281,11 +375,16 @@ const older = sorted[idx - 1];
     border-radius: var(--radius);
     border: 1px solid var(--border);
     background: var(--bg-alt);
+    transition: transform 0.5s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s;
+  }
+  .day-body .spark-meta .dd-image:hover {
+    transform: scale(1.015);
+    box-shadow: var(--shadow-md);
   }
 
   /* Image sitting as its own paragraph immediately after a spark card */
   .day-body section.spark-card + p:has(> img) {
-    margin: 0 0 2rem;
+    margin: -0.75rem 0 2.5rem;
     text-align: center;
   }
   .day-body section.spark-card + p > img {
@@ -296,38 +395,54 @@ const older = sorted[idx - 1];
     border-radius: var(--radius);
     border: 1px solid var(--border);
     background: var(--bg-alt);
+    transition: transform 0.5s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s;
+  }
+  .day-body section.spark-card + p > img:hover {
+    transform: scale(1.015);
+    box-shadow: var(--shadow-md);
   }
 
   /* Quote inside a spark card (连接点分析 blockquote) gets softer styling */
   .day-body section.spark-card blockquote {
-    margin: 0.6rem 1.25rem 0.6rem;
+    margin: 0.75rem 1.5rem 0.75rem 1.75rem;
     background: var(--bg-alt);
-    border-left: 3px solid var(--accent);
-    border-radius: 0 var(--radius) var(--radius) 0;
   }
 
   /* First paragraph of a spark card (often 连接点) reads as the lede */
   .day-body section.spark-card > p:first-of-type {
-    margin: 0.85rem 1.25rem 0;
+    margin: 1rem 1.5rem 0 1.75rem;
     color: var(--text-muted);
     font-size: 0.95rem;
   }
 
   @media (max-width: 640px) {
     .day-body dl.spark-meta { grid-template-columns: 1fr; gap: 0.25rem 0; }
-    .day-body .spark-meta dt { padding-top: 0.5rem; }
+    .day-body .spark-meta dt { padding-top: 0.6rem; }
     .day-body .spark-meta dt:first-child { padding-top: 0; }
+    .day-body section.spark-card > h3 { padding: 1.1rem 1.25rem 1rem 1.5rem; }
+    .day-body dl.spark-meta { padding: 1.1rem 1.25rem 1.25rem 1.5rem; }
   }
 </style>
 
 <style>
-  .day {
-    padding: 2rem 1.5rem 4rem;
+  .read-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--grad);
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+    z-index: 200;
   }
 
-  .back-link {
-    margin-bottom: 2rem;
+  .day {
+    padding: 2.5rem 1.5rem 4rem;
+    max-width: 880px;
   }
+
+  .back-link { margin-bottom: 2.5rem; }
   .back-link a {
     color: var(--text-muted);
     font-size: 0.875rem;
@@ -335,117 +450,157 @@ const older = sorted[idx - 1];
   .back-link a:hover { color: var(--accent); }
 
   .day-head {
-    margin-bottom: 2.5rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 2px solid var(--border);
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
   }
 
   .day-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+
+  .day-meta-mono {
     color: var(--accent);
+    font-family: var(--font-mono);
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+  }
+
+  .day-run {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    margin-bottom: 0.5rem;
+  }
+
+  .day-count {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
   }
 
   .day-title {
     font-family: var(--font-serif);
-    font-size: clamp(2rem, 5vw, 3rem);
-    font-weight: 600;
+    font-size: clamp(2rem, 5vw, 3.25rem);
+    font-weight: 900;
     color: var(--text);
-    letter-spacing: -0.02em;
-    line-height: 1.1;
-    display: flex;
-    align-items: baseline;
-    gap: 0.75rem;
-    flex-wrap: wrap;
+    letter-spacing: 0.01em;
+    line-height: 1.15;
   }
 
-  .day-run {
-    font-family: var(--font-sans);
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--text-dim);
-    background: var(--bg-alt);
-    padding: 0.25rem 0.65rem;
-    border-radius: 999px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
+  .day-title-sep { color: var(--text-dim); font-weight: 400; }
 
   .day-toc {
-    list-style: none;
-    margin: 1.25rem 0 0;
-    padding: 1rem 1.25rem;
-    background: var(--bg-alt);
-    border-radius: var(--radius);
+    margin-top: 1.75rem;
+    padding: 1.25rem 1.5rem;
+    background: var(--bg-card);
     border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .toc-kicker {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 0.75rem;
+  }
+
+  .toc-list {
+    list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.5rem;
   }
-  .day-toc li {
-    font-size: 0.9rem;
-    color: var(--text-muted);
+
+  .toc-list a {
     display: flex;
-    gap: 0.6rem;
+    gap: 0.85rem;
+    align-items: baseline;
+    color: var(--text-muted);
+    font-size: 0.9375rem;
+    transition: color 0.18s;
   }
-  .toc-bullet { color: var(--accent); }
+  .toc-list a:hover { color: var(--accent); }
+
+  .toc-num {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    flex: 0 0 auto;
+  }
 
   .day-nav {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-top: 3.5rem;
-    padding-top: 2rem;
+    gap: 1.25rem;
+    margin-top: 4rem;
+    padding-top: 2.5rem;
     border-top: 1px solid var(--border);
   }
 
   .day-nav-link {
     display: flex;
-    align-items: center;
-    gap: 0.85rem;
-    padding: 1rem 1.25rem;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding: 1.5rem 1.75rem;
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-lg);
     color: var(--text);
-    transition: border-color 0.15s, color 0.15s, transform 0.15s;
-    min-height: 64px;
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
   }
-  .day-nav-link.prev { text-align: left; }
-  .day-nav-link.next { text-align: right; justify-self: end; }
+  .day-nav-link.next { text-align: right; }
   .day-nav-link:hover {
-    border-color: var(--accent);
+    border-color: var(--border-strong);
     color: var(--text);
-    transform: translateY(-1px);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md), var(--glow);
   }
-
-  .nav-arrow {
-    font-size: 1.25rem;
-    color: var(--accent);
-    line-height: 1;
-  }
-
-  .nav-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-  }
-  .day-nav-link.next .nav-meta { align-items: flex-end; }
 
   .nav-kicker {
+    font-family: var(--font-mono);
     font-size: 0.7rem;
-    color: var(--text-dim);
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
   }
+
   .nav-title {
-    font-weight: 600;
-    font-size: 0.95rem;
+    font-family: var(--font-serif);
+    font-weight: 700;
+    font-size: 1.25rem;
     line-height: 1.3;
   }
 
   .day-nav-spacer { display: block; }
+
+  @media (max-width: 640px) {
+    .day-nav { grid-template-columns: 1fr; }
+    .day-nav-link.next { text-align: left; }
+  }
 </style>

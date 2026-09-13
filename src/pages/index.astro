@@ -4,6 +4,8 @@ import { getCollection } from 'astro:content';
 
 const MAX_FEATURED_PER_NIGHT = 8;
 
+const MONTH_NAMES = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+
 const allEntries = await getCollection('days');
 const entries = allEntries
   .map((entry) => {
@@ -35,6 +37,7 @@ const entries = allEntries
     return {
       slug: entry.id,
       dateLabel: titleMatch?.[1].trim() || entry.id,
+      date: entry.id.match(/(\d{4})-(\d{2})-(\d{2})/)?.slice(1) || null,
       runHint: titleMatch?.[2] || body.match(/\(run\s+(\d+)\)/)?.[1] || null,
       collisions,
       cardCount: cards.length,
@@ -52,186 +55,366 @@ const entries = allEntries
   });
 
 const totalCards = entries.reduce((acc, e) => acc + e.cardCount, 0);
-const totalFeatured = entries.reduce((acc, e) => acc + e.featuredSparks.length, 0);
 const latest = entries[0];
-const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
+const pastEntries = entries.slice(1);
+
+// Group the archive by month (desc),月刊式时间线。
+const months = [];
+for (const e of pastEntries) {
+  const key = e.date ? `${e.date[0]}-${e.date[1]}` : '未知';
+  let m = months.find((mm) => mm.key === key);
+  if (!m) {
+    m = {
+      key,
+      label: e.date ? `${e.date[0]} 年 ${MONTH_NAMES[Number(e.date[1]) - 1]}` : key,
+      items: [],
+    };
+    months.push(m);
+  }
+  m.items.push(e);
+}
+
+const latestFeatured = latest ? latest.topCards.map((c) => {
+  const img = latest.featuredSparks.find((f) => f.n === c.n);
+  return { ...c, url: img?.url || null };
+}) : [];
 ---
 
 <BaseLayout title="Wonderland — 跨域灵感日志" description="每天把两个陌生的领域碰撞一次，记下产生的火花。">
   <section class="hero container">
-    <p class="kicker">跨域灵感日志</p>
-    <h1 class="title">遴选两个陌生的领域碰撞，看会冒出什么火花。</h1>
-    <p class="lede">
-      Wonderland 是一个跨领域灵感的常态化实验：每日遴选两个看似无关的领域，
+    <p class="kicker" data-reveal>✺ 跨域灵感日志 · CROSS-DOMAIN SPARK LOG</p>
+    <h1 class="title" data-reveal style="--rd:80ms">
+      <span class="title-word grad-text">Wonderland</span>
+      <span class="title-sub">把两个陌生的领域撞在一起，<br />看会冒出什么<em>火花</em>。</span>
+    </h1>
+    <p class="lede" data-reveal style="--rd:160ms">
+      一个跨领域灵感的常态化实验：每日遴选两个看似无关的领域，
       引入一项约束命题，检索相关文献锚点，记录所产生的火花。
       此处不展示创作过程，只呈现最终的火花与参考文献。
     </p>
     {latest && (
-      <div class="latest-cta">
-        <a href={`/days/${latest.slug}/`} class="btn-primary">查看本期 →</a>
-        <span class="latest-meta">{latest.cardCount} 张卡片 · {latest.collisions.length} 组碰撞</span>
+      <div class="latest-cta" data-reveal style="--rd:240ms">
+        <a href={`/days/${latest.slug}/`} class="btn-primary magnetic">阅读本期 →</a>
+        <span class="latest-meta">{entries.length} 期 · {totalCards} 张卡片</span>
       </div>
     )}
   </section>
 
+  {latest && (
+    <section class="tonight container" data-reveal>
+      <header class="section-head">
+        <p class="section-kicker">最新一期</p>
+        <h2 class="section-title">
+          <a href={`/days/${latest.slug}/`}>{latest.dateLabel}</a>
+        </h2>
+        <p class="section-meta">{latest.cardCount} 张卡片 · {latest.collisions.length} 组碰撞</p>
+      </header>
+
+      <div class="tonight-grid">
+        {latestFeatured.map((c, i) => (
+          <a href={`/days/${latest.slug}/`} class="tonight-card" data-reveal style={`--rd:${i * 90}ms`}>
+            {c.url && (
+              <div class="tonight-image">
+                <img src={c.url} alt={`#${c.n} — ${c.title}`} loading="lazy" />
+              </div>
+            )}
+            <div class="tonight-body">
+              <span class="tonight-num">№ {String(c.n).padStart(2, '0')}</span>
+              <p class="tonight-title">{c.title}</p>
+            </div>
+          </a>
+        ))}
+      </div>
+
+      {latest.collisions.length > 0 && (
+        <p class="tonight-collisions">
+          {latest.collisions.map((c) => (
+            <span class="chip">{c}</span>
+          ))}
+        </p>
+      )}
+    </section>
+  )}
+
   <section class="log container">
-    <header class="log-header">
-      <h2>日志</h2>
-      <p class="count">共 {entries.length} 期 · {totalCards} 张卡片</p>
+    <header class="section-head log-header" data-reveal>
+      <p class="section-kicker">归档</p>
+      <h2 class="section-title">往期日志</h2>
+      <p class="section-meta">共 {entries.length} 期 · {totalCards} 张卡片</p>
     </header>
 
     {entries.length === 0 ? (
       <p class="empty">还没有内容。先跑一次同步脚本把 archive 发布上来。</p>
     ) : (
-      <ol class="entry-list" reversed>
-        {entries.map((entry) => (
-          <li class="entry">
-            <header class="entry-head">
-              <h3 class="entry-date">
-                {entry.dateLabel}
-              </h3>
-              </h3>
-              <p class="entry-meta">
-                <span>{entry.cardCount} 张卡片</span>
-                {entry.featuredSparks.length > 0 && (
-                  <>
-                    <span class="dot">·</span>
-                    <span>{entry.featuredSparks.length} 张配图</span>
-                  </>
-                )}
-              </p>
-            </header>
-
-            {entry.collisions.length > 0 && (
-              <p class="entry-collisions">
-                {entry.collisions.map((c) => (
-                  <span class="collision-chip">{c}</span>
-                ))}
-              </p>
-            )}
-
-            {entry.featuredSparks.length > 0 && (
-              <div class="featured-strip">
-                {entry.featuredSparks.map((spark) => (
-                  <a href={`/days/${entry.slug}/`} class="featured-spark">
-                    <div class="featured-image">
-                      <img src={spark.url} alt={`#${spark.n} — ${spark.title}`} loading="lazy" />
-                      <span class="featured-badge">#{spark.n}</span>
-                    </div>
-                    <p class="featured-title">#{spark.n} — {spark.title}</p>
+      <div class="timeline">
+        {months.map((m) => (
+          <section class="month" data-reveal>
+            <h3 class="month-label">
+              <span class="month-cn">{m.label}</span>
+              <span class="month-key">{m.key}</span>
+            </h3>
+            <ol class="month-list" reversed>
+              {m.items.map((entry) => (
+                <li class="entry">
+                  <a href={`/days/${entry.slug}/`} class="entry-link">
+                    <span class="entry-day">{entry.date ? entry.date[2] : '—'}</span>
+                    <span class="entry-main">
+                      <span class="entry-row">
+                        <span class="entry-title">{entry.topCards[0] ? entry.topCards[0].title : entry.dateLabel}</span>
+                        <span class="entry-count">{entry.cardCount} 卡</span>
+                      </span>
+                      {entry.collisions.length > 0 && (
+                        <span class="entry-collisions">
+                          {entry.collisions.map((c) => (
+                            <span class="chip">{c}</span>
+                          ))}
+                        </span>
+                      )}
+                    </span>
+                    {entry.featuredSparks.length > 0 && (
+                      <span class="entry-thumbs">
+                        {entry.featuredSparks.slice(0, 3).map((spark) => (
+                          <img src={spark.url} alt={`#${spark.n} — ${spark.title}`} loading="lazy" />
+                        ))}
+                      </span>
+                    )}
                   </a>
-                ))}
-              </div>
-            )}
-
-            {entry.topCards.length > 0 && (
-              <ul class="entry-top">
-                {entry.topCards.map((c) => (
-                  <li><strong>#{c.n}</strong> {c.title}</li>
-                ))}
-              </ul>
-            )}
-
-            <a href={`/days/${entry.slug}/`} class="entry-readmore">
-              查看全部 →
-            </a>
-          </li>
+                </li>
+              ))}
+            </ol>
+          </section>
         ))}
-      </ol>
+      </div>
     )}
   </section>
 </BaseLayout>
 
+<script>
+  // Magnetic CTA: the primary button leans toward the cursor.
+  document.querySelectorAll('.magnetic').forEach((el) => {
+    const strength = 18;
+    el.addEventListener('mousemove', (e) => {
+      const r = el.getBoundingClientRect();
+      const dx = e.clientX - (r.left + r.width / 2);
+      const dy = e.clientY - (r.top + r.height / 2);
+      el.style.transform = `translate(${(dx / r.width) * strength}px, ${(dy / r.height) * strength}px)`;
+    });
+    el.addEventListener('mouseleave', () => {
+      el.style.transform = '';
+    });
+  });
+</script>
+
 <style>
+  /* ---- hero ---- */
   .hero {
-    padding: 4rem 1.5rem 3rem;
-    border-bottom: 1px solid var(--border);
+    padding: 6.5rem 1.5rem 4.5rem;
   }
 
   .kicker {
     color: var(--accent);
-    font-size: 0.8125rem;
-    font-weight: 600;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 1.25rem;
+    margin-bottom: 1.75rem;
   }
 
   .title {
-    font-family: var(--font-serif);
-    font-size: clamp(2rem, 4vw, 3rem);
-    font-weight: 600;
-    line-height: 1.15;
-    color: var(--text);
-    letter-spacing: -0.02em;
-    max-width: 22ch;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
   }
 
-  .title em { font-style: italic; color: var(--accent); }
+  .title-word {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 600;
+    font-size: clamp(3.5rem, 9vw, 6.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+  }
+
+  .title-sub {
+    font-family: var(--font-serif);
+    font-size: clamp(1.4rem, 3vw, 2.1rem);
+    font-weight: 900;
+    line-height: 1.35;
+    color: var(--text);
+    letter-spacing: 0.01em;
+    max-width: 26ch;
+  }
+
+  .title-sub em {
+    font-style: normal;
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
 
   .lede {
-    margin-top: 1.25rem;
+    margin-top: 1.75rem;
     font-size: 1.0625rem;
     color: var(--text-muted);
-    max-width: 58ch;
-    line-height: 1.75;
+    max-width: 56ch;
+    line-height: 1.85;
   }
 
   .latest-cta {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    margin-top: 2rem;
+    gap: 1.25rem;
+    margin-top: 2.75rem;
     flex-wrap: wrap;
   }
 
   .btn-primary {
     display: inline-flex;
     align-items: center;
-    padding: 0.65rem 1.25rem;
-    background: var(--accent);
+    padding: 0.8rem 1.6rem;
+    background: var(--grad);
     color: #fff;
-    border-radius: var(--radius);
+    border-radius: 999px;
     font-weight: 600;
     font-size: 0.9375rem;
-    transition: background 0.2s, transform 0.15s;
+    letter-spacing: 0.02em;
+    box-shadow: var(--shadow-md), var(--glow);
+    transition: transform 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.25s, filter 0.25s;
+    will-change: transform;
   }
   .btn-primary:hover {
-    background: var(--accent-hover);
     color: #fff;
-    transform: translateY(-1px);
+    filter: brightness(1.12);
+    box-shadow: var(--shadow-lg), var(--glow);
   }
 
   .latest-meta {
-    color: var(--text-muted);
-    font-size: 0.8125rem;
-  }
-
-  .log {
-    padding: 3rem 1.5rem 4rem;
-  }
-
-  .log-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 2rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .log-header h2 {
-    font-family: var(--font-serif);
-    font-size: 1.5rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-  }
-
-  .count {
     color: var(--text-dim);
+    font-family: var(--font-mono);
     font-size: 0.8125rem;
+    letter-spacing: 0.04em;
+  }
+
+  /* ---- section heads ---- */
+  .section-head { margin-bottom: 2.5rem; }
+
+  .section-kicker {
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    margin-bottom: 0.6rem;
+  }
+
+  .section-title {
+    font-family: var(--font-serif);
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    font-weight: 900;
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+    color: var(--text);
+  }
+  .section-title a { color: inherit; }
+  .section-title a:hover { color: var(--accent); }
+
+  .section-meta {
+    margin-top: 0.5rem;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    letter-spacing: 0.04em;
+  }
+
+  /* ---- tonight (latest issue) ---- */
+  .tonight {
+    padding: 1rem 1.5rem 5rem;
+  }
+
+  .tonight-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+
+  .tonight-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    color: inherit;
+    box-shadow: var(--shadow);
+    transition: transform 0.3s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.3s, box-shadow 0.3s;
+  }
+  .tonight-card:hover {
+    color: inherit;
+    transform: translateY(-4px);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-lg), var(--glow);
+  }
+
+  .tonight-image {
+    aspect-ratio: 3 / 2;
+    overflow: hidden;
+    background: var(--bg-alt);
+  }
+
+  .tonight-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.6s cubic-bezier(0.2, 0, 0.2, 1);
+  }
+  .tonight-card:hover .tonight-image img { transform: scale(1.05); }
+
+  .tonight-body {
+    padding: 1.1rem 1.25rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .tonight-num {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .tonight-title {
+    font-family: var(--font-serif);
+    font-size: 1.0625rem;
+    font-weight: 700;
+    line-height: 1.5;
+    color: var(--text);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .tonight-collisions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.75rem;
+  }
+
+  /* ---- archive timeline ---- */
+  .log {
+    padding: 0 1.5rem 4rem;
   }
 
   .empty {
@@ -239,179 +422,146 @@ const dateOfLatest = latest?.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '—';
     padding: 4rem 1rem;
     color: var(--text-dim);
     font-style: italic;
+    font-family: var(--font-serif);
     border: 1px dashed var(--border);
     border-radius: var(--radius);
   }
 
-  .entry-list {
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 3.5rem;
+  }
+
+  .month-label {
+    display: flex;
+    align-items: baseline;
+    gap: 0.9rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .month-cn {
+    font-family: var(--font-serif);
+    font-size: 1.5rem;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    color: var(--text);
+  }
+
+  .month-key {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+
+  .month-list {
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
   }
 
-  .entry {
+  .entry-link {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.1rem 1rem;
+    margin: 0 -1rem;
+    border-radius: var(--radius);
+    color: inherit;
+    border: 1px solid transparent;
+    transition: background 0.2s, border-color 0.2s, transform 0.2s;
+  }
+  .entry-link:hover {
+    color: inherit;
     background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem 1.75rem;
-    transition: border-color 0.15s, box-shadow 0.2s;
-  }
-  .entry:hover {
-    border-color: var(--accent);
-    box-shadow: var(--shadow-md);
+    border-color: var(--border);
+    transform: translateX(4px);
+    box-shadow: var(--shadow);
   }
 
-  .entry-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 0.75rem;
-    flex-wrap: wrap;
+  .entry-day {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text-dim);
+    min-width: 2.6rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.2s;
+  }
+  .entry-link:hover .entry-day {
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
   }
 
-  .entry-date {
-    font-family: var(--font-serif);
-    font-size: 1.5rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    color: var(--text);
+  .entry-main {
+    flex: 1;
+    min-width: 0;
     display: flex;
-    align-items: baseline;
+    flex-direction: column;
     gap: 0.5rem;
   }
 
-  .run-badge {
-    font-family: var(--font-sans);
-    font-size: 0.7rem;
-    font-weight: 500;
-    color: var(--text-dim);
-    background: var(--bg-alt);
-    padding: 0.15rem 0.5rem;
-    border-radius: 999px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+  .entry-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.9rem;
   }
 
-  .entry-meta {
+  .entry-title {
+    font-family: var(--font-serif);
+    font-size: 1.0625rem;
+    font-weight: 700;
+    line-height: 1.5;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .entry-count {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
     color: var(--text-dim);
-    font-size: 0.8125rem;
-    display: flex;
-    gap: 0.4rem;
+    letter-spacing: 0.06em;
   }
 
   .entry-collisions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
-    margin-bottom: 1rem;
   }
 
-  .collision-chip {
-    font-size: 0.75rem;
-    padding: 0.2rem 0.55rem;
-    background: var(--accent-subtle);
-    color: var(--accent);
-    border-radius: 999px;
-    font-weight: 500;
-  }
-
-  .featured-strip {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1rem;
-    margin: 1.25rem 0 1.25rem;
-  }
-
-  .featured-spark {
+  .entry-thumbs {
+    flex: 0 0 auto;
     display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-    color: inherit;
-  }
-  .featured-spark:hover { color: inherit; }
-
-  .featured-image {
-    position: relative;
-    aspect-ratio: 3 / 2;
-    overflow: hidden;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    background: var(--bg-alt);
+    gap: 0.4rem;
   }
 
-  .featured-image img {
-    width: 100%;
-    height: 100%;
+  .entry-thumbs img {
+    width: 64px;
+    height: 44px;
     object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--border);
     display: block;
-    transition: transform 0.4s cubic-bezier(0.2, 0, 0.2, 1);
   }
 
-  .featured-spark:hover .featured-image img {
-    transform: scale(1.04);
-  }
-
-  .featured-badge {
-    position: absolute;
-    top: 0.6rem;
-    left: 0.6rem;
-    background: rgba(0, 0, 0, 0.78);
-    color: #fff;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0.2rem 0.5rem;
-    border-radius: 999px;
-    backdrop-filter: blur(4px);
-  }
-
-  .featured-title {
-    font-family: var(--font-serif);
-    font-size: 1.0625rem;
-    font-weight: 600;
-    line-height: 1.35;
-    color: var(--text);
-    letter-spacing: -0.01em;
-  }
-
-  .entry-top {
-    list-style: none;
-    padding: 1rem 0 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    border-top: 1px dashed var(--border);
-    margin-top: 0.5rem;
-  }
-
-  .entry-top li {
-    font-size: 0.875rem;
-    color: var(--text-muted);
-    line-height: 1.55;
-  }
-
-  .entry-top li strong {
-    color: var(--accent);
-    font-weight: 600;
-    margin-right: 0.4rem;
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-  }
-
-  .entry-readmore {
-    display: inline-flex;
-    align-items: center;
-    margin-top: 1.1rem;
-    color: var(--accent);
-    font-weight: 600;
-    font-size: 0.875rem;
-  }
-  .entry-readmore:hover { color: var(--accent-hover); }
-
-  @media (max-width: 640px) {
-    .featured-strip { grid-template-columns: 1fr; }
-    .entry { padding: 1.25rem 1.25rem; }
+  @media (max-width: 760px) {
+    .hero { padding: 4rem 1.5rem 3rem; }
+    .tonight-grid { grid-template-columns: 1fr; }
+    .entry-link { gap: 1rem; }
+    .entry-day { font-size: 1.5rem; min-width: 2rem; }
+    .entry-thumbs img:nth-child(n+2) { display: none; }
+    .entry-title { white-space: normal; }
   }
 </style>

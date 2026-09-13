@@ -4,33 +4,36 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 <BaseLayout title="关于 — Wonderland">
   <article class="about container">
-    <header class="about-head">
-      <p class="kicker">关于</p>
-      <h1>关于此站点</h1>
+    <header class="about-head" data-reveal>
+      <p class="kicker">✺ 关于 · ABOUT</p>
+      <h1>一座做<span class="grad-text">梦</span>的灵感花园</h1>
+      <p class="about-lede">
+        Wonderland 是一个跨领域灵感的常态化实验：每日遴选两个看似无关的领域，
+        引入一项约束命题，检索相关文献锚点，而后记录所产生的火花。
+      </p>
     </header>
 
     <section class="about-body">
-      <h2>本站是什么</h2>
-      <p>
-        Wonderland 是一个跨领域灵感的常态化实验：每日遴选两个看似无关的领域，
-        引入一项约束命题，检索相关文献锚点，而后记录所产生的火花。
+      <h2 data-reveal>本站是什么</h2>
+      <p data-reveal>
         此处仅收录火花本身及其参考文献——不含创作过程、不含营销内容、
-        不含订阅入口。
+        不含订阅入口。每一天是一期，每一期是两场陌生领域的碰撞，
+        每一张卡片是一颗被记录下来的火花。
       </p>
 
-      <h2>一期的工作流程</h2>
-      <ol>
-        <li><strong>遴选</strong> —— 从领域池中抽取两个相邻或对偶的领域</li>
-        <li><strong>约束命题</strong> —— 引入一项不请自来的限制（例如：若数据规模放大 10⁴ 倍？若该系统必须具备自修复能力？）</li>
-        <li><strong>文献锚定</strong> —— 对每组碰撞执行二至三次检索，确认真实可引用的参考文献</li>
-        <li><strong>筛选</strong> —— 仅保留惊讶度 ≥ 7 或可行动度 ≥ 8 的火花；其余舍弃</li>
-        <li><strong>插图</strong> —— 每组遴选 Top 1-2 张火花生成视觉隐喻，并托管于公开图床</li>
-        <li><strong>归档</strong> —— 整期汇为一页，次日发布</li>
+      <h2 data-reveal>一期的工作流程</h2>
+      <ol class="flow" data-reveal>
+        <li><span class="flow-num">01</span><strong>遴选</strong> —— 从领域池中抽取两个相邻或对偶的领域</li>
+        <li><span class="flow-num">02</span><strong>约束命题</strong> —— 引入一项不请自来的限制（例如：若数据规模放大 10⁴ 倍？若该系统必须具备自修复能力？）</li>
+        <li><span class="flow-num">03</span><strong>文献锚定</strong> —— 对每组碰撞执行二至三次检索，确认真实可引用的参考文献</li>
+        <li><span class="flow-num">04</span><strong>筛选</strong> —— 仅保留惊讶度 ≥ 7 或可行动度 ≥ 8 的火花；其余舍弃</li>
+        <li><span class="flow-num">05</span><strong>插图</strong> —— 每组遴选 Top 1-2 张火花生成视觉隐喻，并托管于公开图床</li>
+        <li><span class="flow-num">06</span><strong>归档</strong> —— 整期汇为一页，次日发布</li>
       </ol>
 
-      <h2>火花卡片的标准结构</h2>
-      <p>所有火花均按统一骨架记录，以便跨期对照：</p>
-      <ul>
+      <h2 data-reveal>火花卡片的标准结构</h2>
+      <p data-reveal>所有火花均按统一骨架记录，以便跨期对照：</p>
+      <ul data-reveal>
         <li><strong>碰撞</strong> —— 两个领域 + 约束命题</li>
         <li><strong>连接点</strong> —— 真正的结构桥梁（通常引用某篇论文 / 实验室 / 命名原语）</li>
         <li><strong>锚点</strong> —— 可点击验证的参考文献</li>
@@ -39,22 +42,22 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <li><strong>如果要做</strong> —— 一句话：指明下一步的实验 / 草图 / 论述</li>
       </ul>
 
-      <h2>甄选标准</h2>
-      <p>
+      <h2 data-reveal>甄选标准</h2>
+      <p data-reveal>
         偏好真正可以动手实现或动手验证的想法。
         其中相当部分永远不会落地——这属于甄选过程的固有特性。
         任何在脱离检索结果的前提下即可推断的命题，
         将被视作陈词滥调而舍弃。
       </p>
 
-      <h2>技术架构</h2>
-      <p>
+      <h2 data-reveal>技术架构</h2>
+      <p data-reveal>
         本站采用 Astro 静态构建，源代码托管于 GitHub，部署由 Vercel 自动接管。
         搜索由 mcp-search 提供，图像经本地 ComfyUI Flux 生成后托管于 PicFast。
       </p>
     </section>
 
-    <p class="back">
+    <p class="back" data-reveal>
       <a href="/">← 返回日志</a>
     </p>
   </article>
@@ -62,62 +65,106 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 <style>
   .about {
-    padding: 3rem 1.5rem 4rem;
-    max-width: 760px;
+    padding: 4.5rem 1.5rem 4rem;
+    max-width: 780px;
   }
 
   .about-head {
-    margin-bottom: 3rem;
-    padding-bottom: 1.5rem;
+    margin-bottom: 3.5rem;
+    padding-bottom: 2rem;
     border-bottom: 1px solid var(--border);
   }
 
   .kicker {
     color: var(--accent);
-    font-size: 0.8125rem;
-    font-weight: 600;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 0.75rem;
+    letter-spacing: 0.18em;
+    margin-bottom: 1rem;
   }
 
   .about-head h1 {
     font-family: var(--font-serif);
-    font-size: clamp(2rem, 4vw, 2.75rem);
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    line-height: 1.15;
+    font-size: clamp(2.25rem, 5vw, 3.25rem);
+    font-weight: 900;
+    letter-spacing: 0.01em;
+    line-height: 1.2;
     color: var(--text);
+  }
+
+  .about-lede {
+    margin-top: 1.5rem;
+    font-size: 1.125rem;
+    color: var(--text-muted);
+    line-height: 1.9;
+    max-width: 54ch;
   }
 
   .about-body {
     font-size: 1.0625rem;
-    line-height: 1.75;
+    line-height: 1.85;
     color: var(--text);
   }
 
   .about-body h2 {
     font-family: var(--font-serif);
-    font-size: 1.35rem;
-    font-weight: 600;
-    margin: 2.5rem 0 1rem;
+    font-size: 1.5rem;
+    font-weight: 900;
+    margin: 3.5rem 0 1.25rem;
     color: var(--text);
-    letter-spacing: -0.01em;
+    letter-spacing: 0.01em;
   }
 
-  .about-body p { margin: 0.9rem 0; }
+  .about-body p { margin: 1rem 0; }
 
   .about-body em { color: var(--accent); font-style: italic; }
 
   .about-body ul, .about-body ol {
-    margin: 0.9rem 0 0.9rem 1.5rem;
+    margin: 1rem 0 1rem 1.5rem;
   }
-  .about-body li { margin: 0.3rem 0; }
+  .about-body li { margin: 0.4rem 0; }
 
-  .about-body strong { color: var(--accent); }
+  .about-body strong { color: var(--accent); font-weight: 600; }
+
+  .about-body .flow strong { white-space: nowrap; }
+
+  .about-body .flow {
+    list-style: none;
+    margin-left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .about-body .flow li {
+    display: flex;
+    gap: 1rem;
+    align-items: baseline;
+    padding: 0.9rem 1.1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    line-height: 1.65;
+    font-size: 0.9375rem;
+  }
+
+  .flow-num {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
 
   .back {
-    margin-top: 3rem;
+    margin-top: 3.5rem;
     padding-top: 2rem;
     border-top: 1px solid var(--border);
   }
