@@ -32,7 +32,20 @@ const entries = allEntries
       n: mm[1],
       title: mm[2].trim(),
     }));
-    const collisions = [...body.matchAll(/^##\s+组合\s+\d+[：:]\s*(.+?)\s*$/gm)].map((mm) => mm[1].trim());
+    // 组合标题存在数字（组合 1：）与字母（组合 A：）两种形态。
+    let collisions = [...body.matchAll(/^##\s+组合\s+[0-9A-Z]+[：:]\s*(.+?)\s*$/gm)].map((mm) => mm[1].trim());
+    if (collisions.length === 0) {
+      // 无组合标题的期数：从每张卡片的 **碰撞**: 字段提取去重列表。
+      const seen = new Set();
+      for (const mm of body.matchAll(/^\*\*碰撞\*\*[:：]\s*(.+?)\s*$/gm)) {
+        const c = mm[1].trim();
+        if (!seen.has(c)) {
+          seen.add(c);
+          collisions.push(c);
+        }
+        if (collisions.length >= 3) break;
+      }
+    }
 
     return {
       slug: entry.id,

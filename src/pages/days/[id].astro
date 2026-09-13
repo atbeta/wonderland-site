@@ -15,8 +15,18 @@ const { Content } = await render(entry);
 
 const body = entry.body || '';
 const titleMatch = body.match(/^# Wonderland\s*[—–-]\s*([^\n(]+?)(?:\s*\(run\s+(\d+)\))?\s*$/m);
-const collisionToc = [...body.matchAll(/^##\s+组合\s+\d+[：:]\s*(.+?)\s*$/gm)].map((m) => m[1].trim());
-const cardCount = (body.match(/^###\s+💥/gm) || []).length;
+// 组合标题存在数字（组合 1：）与字母（组合 A：）两种形态。
+const collisionToc = [...body.matchAll(/^##\s+组合\s+[0-9A-Z]+[：:]\s*(.+?)\s*$/gm)].map((m) => m[1].trim());
+const sparkCards = [...body.matchAll(/^###\s+💥\s+#(\d+)\s+[—–-]\s+(.+)$/gm)].map((m) => ({
+  n: m[1],
+  title: m[2].trim(),
+}));
+const cardCount = sparkCards.length;
+
+// 目录：有组合标题按组合分节；无组合标题的期数退回卡片锚点列表。
+const toc = collisionToc.length > 0
+  ? collisionToc.map((c, i) => ({ num: String(i + 1).padStart(2, '0'), text: c, href: `#collision-${i + 1}` }))
+  : sparkCards.map((c) => ({ num: `#${c.n}`, text: c.title, href: `#spark-${c.n}` }));
 
 const dateLabel = titleMatch?.[1]?.trim() || entry.id;
 const runHint = titleMatch?.[2] || null;
@@ -52,18 +62,18 @@ const older = sorted[idx + 1];
       <p class="day-meta">
         <span class="day-meta-mono">{dateLabel}</span>
         {runHint && <span class="day-run">run {runHint}</span>}
-        <span class="day-count">{collisionToc.length} 组碰撞 · {cardCount} 张火花</span>
+        <span class="day-count">{collisionToc.length > 0 ? `${collisionToc.length} 组碰撞 · ` : ''}{cardCount} 张火花</span>
       </p>
       <h1 class="day-title">Wonderland <span class="day-title-sep">—</span> <span class="grad-text">{dateLabel}</span></h1>
-      {collisionToc.length > 0 && (
+      {toc.length > 0 && (
         <nav class="day-toc" aria-label="本期目录">
           <p class="toc-kicker">本期目录</p>
           <ol class="toc-list">
-            {collisionToc.map((c, i) => (
+            {toc.map((item) => (
               <li>
-                <a href={`#collision-${i + 1}`}>
-                  <span class="toc-num">{String(i + 1).padStart(2, '0')}</span>
-                  <span class="toc-text">{c}</span>
+                <a href={item.href}>
+                  <span class="toc-num">{item.num}</span>
+                  <span class="toc-text">{item.text}</span>
                 </a>
               </li>
             ))}
@@ -111,7 +121,7 @@ const older = sorted[idx + 1];
     var heads = document.querySelectorAll('.day-body h2');
     var n = 0;
     heads.forEach(function(h) {
-      if (/^组合\s*\d+/.test(h.textContent || '')) {
+      if (/^组合\s*[0-9A-Z]+/.test(h.textContent || '')) {
         n++;
         h.id = 'collision-' + n;
       }
@@ -119,12 +129,15 @@ const older = sorted[idx + 1];
   })();
 
   // Restructure spark card headings: split "💥 #N — title" into a mono
-  // index chip + serif title. Purely presentational.
+  // index chip + serif title, and give the card a #spark-N anchor.
+  // Purely presentational.
   (function() {
     document.querySelectorAll('.day-body .spark-card > h3').forEach(function(h) {
       var text = h.textContent || '';
       var m = text.match(/^💥\s*#(\d+)\s*[—–-]\s*([\s\S]*)$/);
       if (!m) return;
+      var card = h.closest('section.spark-card');
+      if (card) card.id = 'spark-' + m[1];
       h.textContent = '';
       var num = document.createElement('span');
       num.className = 'spark-index';
@@ -216,6 +229,7 @@ const older = sorted[idx + 1];
     margin: 2.5rem 0;
     overflow: hidden;
     box-shadow: var(--shadow);
+    scroll-margin-top: 5.5rem;
     transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
   }
   .day-body section.spark-card::before {
