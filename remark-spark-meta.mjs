@@ -6,6 +6,12 @@
 // 如果要做 / 画面 / 惊讶度 / 具体度 / 可行动度). Subsequent values are
 // collected until the next <strong>**K**: marker; everything between
 // markers becomes one <dd> for that <dt>.
+//
+// Presentation decisions baked in here:
+// - 碰撞 rows are dropped (the group heading already carries A × B).
+// - 状态 rows are dropped (the value is the constant "火花" archive-wide).
+// - Consecutive score keys render as one merged 评分 row.
+// - 画面 values fold into <details>; any embedded image stays visible.
 
 import { visit, SKIP } from 'unist-util-visit';
 
@@ -14,7 +20,10 @@ const META_KEYS = new Set([
   '惊讶度', '具体度', '可行动度',
 ]);
 
+const DROP_KEYS = new Set(['碰撞', '状态']);
+
 const SCORE_KEYS = new Set(['惊讶度', '具体度', '可行动度']);
+const SCORE_LABELS = { 惊讶度: '惊讶', 具体度: '具体', 可行动度: '可行' };
 
 function escapeHtml(s) {
   return s
@@ -52,6 +61,56 @@ function inlineToPlain(children) {
       return '';
     })
     .join('');
+}
+
+// One `<dt>评分</dt><dd>…</dd>` merging a run of score items into
+// a single row: `惊讶 9 ▮ / 具体 9 ▮ / 可行 8 ▮`.
+function renderScoreRow(items) {
+  const inner = items.map(({ key, value }) => {
+    const cleaned = value.replace(/^[\s]*[:：]\s*/, '');
+    const numMatch = cleaned.match(/(\d+)/);
+    const num = numMatch ? Number(numMatch[1]) : null;
+    const numHtml = num !== null
+      ? `<span class="score-num">${num}</span>`
+      : `<span>${escapeHtml(cleaned)}</span>`;
+    const barHtml = num !== null
+      ? `<span class="score-bar" aria-hidden="true">` +
+          `<span class="score-bar-fill" style="width:${num * 10}%"></span>` +
+        `</span>`
+      : '';
+    const label = SCORE_LABELS[key] || escapeHtml(key);
+    return `<span class="score-item"><span class="score-label">${label}</span>${numHtml}${barHtml}</span>`;
+  }).join('');
+  return `<dt class="dt-score">评分</dt><dd class="dd-score">${inner}</dd>`;
+}
+
+// A single non-score `<dt>key</dt><dd>…</dd>` row.
+function renderMetaRow({ key, value }) {
+  const cleaned = value.replace(/^[\s]*[:：]\s*/, '');
+
+  // If the value carries an image, splice it out and emit as real <img>
+  // so the browser renders it. Otherwise fall back to escaped text.
+  const imgMatch = cleaned.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+  const imgHtml = imgMatch
+    ? `<img class="dd-image" src="${escapeHtml(imgMatch[2])}" alt="${escapeHtml(imgMatch[1])}" loading="lazy" />`
+    : '';
+  const text = cleaned.replace(imgMatch ? imgMatch[0] : '', '').trim();
+
+  let ddInner;
+  if (key === '画面') {
+    // 画面 is the image-generation prompt: workflow metadata, folded
+    // away; an embedded image stays visible outside the fold.
+    ddInner = (text
+      ? `<details class="dd-fold"><summary>生图提示词</summary><p>${escapeHtml(text)}</p></details>`
+      : '') + imgHtml;
+  } else if (imgMatch) {
+    ddInner = (text ? `${escapeHtml(text)}<br>` : '') + imgHtml;
+  } else {
+    ddInner = escapeHtml(text);
+  }
+
+  return `<dt class="dt-meta">${escapeHtml(key)}</dt>` +
+         `<dd class="dd-meta">${ddInner}</dd>`;
 }
 
 export default function remarkWonderlandSparkMeta() {
@@ -98,46 +157,27 @@ export default function remarkWonderlandSparkMeta() {
       }
       flush();
 
-      if (items.length === 0) return;
+      const kept = items.filter(({ key }) => !DROP_KEYS.has(key));
+      if (kept.length === 0) {
+        // Paragraph carried only dropped rows — remove it entirely.
+        parent.children.splice(index, 1);
+        return [SKIP, index];
+      }
 
-      const parts = items.map(({ key, value }) => {
-        const isScore = SCORE_KEYS.has(key);
-        const dtClass = isScore ? 'dt-score' : 'dt-meta';
-        const ddClass = isScore ? 'dd-score' : 'dd-meta';
-
-        // Strip the leading ": " that comes from `**K**: value` markdown.
-        // Image / link syntax inside the value is preserved and re-emitted.
-        const cleaned = value.replace(/^[\s]*[:：]\s*/, '');
-        let ddInner;
-        if (isScore) {
-          const numMatch = cleaned.match(/(\d+)/);
-          const num = numMatch ? Number(numMatch[1]) : null;
-          if (num !== null) {
-            ddInner =
-              `<span class="score-num">${num}</span>` +
-              `<span class="score-bar" aria-hidden="true">` +
-                `<span class="score-bar-fill" style="width:${num * 10}%"></span>` +
-              `</span>`;
-          } else {
-            ddInner = escapeHtml(cleaned);
-          }
+      // Consecutive score items merge into one 评分 row; everything else
+      // renders as its own row, in original order.
+      const fragments = [];
+      for (let i = 0; i < kept.length; i++) {
+        if (SCORE_KEYS.has(kept[i].key)) {
+          let j = i;
+          while (j < kept.length && SCORE_KEYS.has(kept[j].key)) j++;
+          fragments.push(renderScoreRow(kept.slice(i, j)));
+          i = j - 1;
         } else {
-          // If the value carries an image, splice it out and emit as real <img>
-          // so the browser renders it. Otherwise fall back to escaped text.
-          const imgMatch = cleaned.match(/!\[([^\]]*)\]\(([^)]+)\)/);
-          if (imgMatch) {
-            const alt = escapeHtml(imgMatch[1]);
-            const url = escapeHtml(imgMatch[2]);
-            const text = cleaned.replace(imgMatch[0], '').trim();
-            ddInner = (text ? `${escapeHtml(text)}<br>` : '') +
-                      `<img class="dd-image" src="${url}" alt="${alt}" loading="lazy" />`;
-          } else {
-            ddInner = escapeHtml(cleaned.trim());
-          }
+          fragments.push(renderMetaRow(kept[i]));
         }
-        return `<dt class="${dtClass}">${escapeHtml(key)}</dt>` +
-               `<dd class="${ddClass}">${ddInner}</dd>`;
-      }).join('');
+      }
+      const parts = fragments.join('');
 
       const dlHtml = `<dl class="spark-meta">${parts}</dl>`;
 

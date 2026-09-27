@@ -2,36 +2,38 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
 
-const MAX_FEATURED_PER_NIGHT = 8;
-
 const MONTH_NAMES = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
 
 const allEntries = await getCollection('days');
+
+// Latest issue preview: image-bearing cards + collision chips, from the
+// frontmatter contract in src/content/config.ts.
+const latestRaw = [...allEntries].sort((a, b) => b.id.localeCompare(a.id))[0];
+const tonightFeatured = latestRaw
+  ? (latestRaw.data.cards || [])
+      .filter((c) => !!c.image)
+      .map((c) => ({ n: c.n, title: c.title.replace(/\s*[:：].*$/, ''), url: c.image }))
+      .slice(0, 4)
+  : [];
+const tonightCollisions = latestRaw
+  ? (latestRaw.data.groups || []).map(
+      (g) => `${g.a} × ${g.b}${g.constraint ? ` + ${g.constraint}` : ''}`
+    )
+  : [];
+
 const entries = allEntries
   .map((entry) => {
     const data = entry.data;
     const dm = (data.date || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    // Phase 2: everything below comes from frontmatter (validated by the
-    // collection schema in src/content/config.ts) — no regex over the body.
-    const collisions = (data.groups || []).map(
-      (g) => `${g.a} × ${g.b}${g.constraint ? ` + ${g.constraint}` : ''}`
-    );
-    const cards = (data.cards || []).map((c) => ({ n: c.n, title: c.title }));
-    const featuredSparks = (data.cards || [])
-      .filter((c) => !!c.image)
-      .map((c) => ({ n: c.n, title: c.title.replace(/\s*[:：].*$/, ''), url: c.image }));
-
+    const cards = data.cards || [];
+    const firstCard = cards[0];
+    const firstImage = cards.find((c) => !!c.image);
     return {
       slug: entry.id,
       dateLabel: data.title || data.date || entry.id,
       date: dm ? [dm[1], dm[2], dm[3]] : null,
-      runHint: null,
-      collisions,
-      cardCount: cards.length,
-      cards,
-      featuredSparks: featuredSparks.slice(0, MAX_FEATURED_PER_NIGHT),
-      hasMoreFeatured: featuredSparks.length > MAX_FEATURED_PER_NIGHT,
-      topCards: cards.slice(0, 3),
+      title: firstCard ? firstCard.title : (data.title || data.date || entry.id),
+      thumb: firstImage ? firstImage.image : null,
     };
   })
   .sort((a, b) => {
@@ -40,11 +42,11 @@ const entries = allEntries
     return db.localeCompare(da);
   });
 
-const totalCards = entries.reduce((acc, e) => acc + e.cardCount, 0);
 const latest = entries[0];
 const pastEntries = entries.slice(1);
 
-// Group the archive by month (desc),月刊式时间线。
+// Group the archive by month (desc). Each month renders as a collapsible
+// <details> so the timeline stays scannable as the archive grows.
 const months = [];
 for (const e of pastEntries) {
   const key = e.date ? `${e.date[0]}-${e.date[1]}` : '未知';
@@ -59,11 +61,6 @@ for (const e of pastEntries) {
   }
   m.items.push(e);
 }
-
-const latestFeatured = latest ? latest.topCards.map((c) => {
-  const img = latest.featuredSparks.find((f) => f.n === c.n);
-  return { ...c, url: img?.url || null };
-}) : [];
 ---
 
 <BaseLayout title="Wonderland — 跨域灵感日志" description="每天把两个陌生的领域碰撞一次，记下产生的火花。">
@@ -81,7 +78,6 @@ const latestFeatured = latest ? latest.topCards.map((c) => {
     {latest && (
       <div class="latest-cta" data-reveal style="--rd:240ms">
         <a href={`/days/${latest.slug}/`} class="btn-primary magnetic">阅读本期 →</a>
-        <span class="latest-meta">{entries.length} 期 · {totalCards} 张卡片</span>
       </div>
     )}
   </section>
@@ -93,28 +89,27 @@ const latestFeatured = latest ? latest.topCards.map((c) => {
         <h2 class="section-title">
           <a href={`/days/${latest.slug}/`}>{latest.dateLabel}</a>
         </h2>
-        <p class="section-meta">{latest.cardCount} 张卡片 · {latest.collisions.length} 组碰撞</p>
       </header>
 
-      <div class="tonight-grid">
-        {latestFeatured.map((c, i) => (
-          <a href={`/days/${latest.slug}/`} class="tonight-card" data-reveal style={`--rd:${i * 90}ms`}>
-            {c.url && (
+      {tonightFeatured.length > 0 && (
+        <div class="tonight-grid">
+          {tonightFeatured.map((c, i) => (
+            <a href={`/days/${latest.slug}/`} class="tonight-card" data-reveal style={`--rd:${i * 90}ms`}>
               <div class="tonight-image">
                 <img src={c.url} alt={`#${c.n} — ${c.title}`} loading="lazy" />
               </div>
-            )}
-            <div class="tonight-body">
-              <span class="tonight-num">№ {String(c.n).padStart(2, '0')}</span>
-              <p class="tonight-title">{c.title}</p>
-            </div>
-          </a>
-        ))}
-      </div>
+              <div class="tonight-body">
+                <span class="tonight-num">№ {String(c.n).padStart(2, '0')}</span>
+                <p class="tonight-title">{c.title}</p>
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
 
-      {latest.collisions.length > 0 && (
+      {tonightCollisions.length > 0 && (
         <p class="tonight-collisions">
-          {latest.collisions.map((c) => (
+          {tonightCollisions.map((c) => (
             <span class="chip">{c}</span>
           ))}
         </p>
@@ -126,45 +121,36 @@ const latestFeatured = latest ? latest.topCards.map((c) => {
     <header class="section-head log-header" data-reveal>
       <p class="section-kicker">归档</p>
       <h2 class="section-title">往期日志</h2>
-      <p class="section-meta">共 {entries.length} 期 · {totalCards} 张卡片</p>
     </header>
 
     {entries.length === 0 ? (
       <p class="empty">还没有内容。先跑一次同步脚本把 archive 发布上来。</p>
     ) : (
       <div class="timeline">
-        {months.map((m) => (
-          <section class="month" data-reveal>
-            <h3 class="month-label">
-              <span class="month-cn">{m.label}</span>
-              <span class="month-key">{m.key}</span>
-            </h3>
+        {months.map((m, i) => (
+          <details class="month" open={i === 0} data-reveal>
+            <summary class="month-summary">
+              <h3 class="month-label">
+                <span class="month-cn">{m.label}</span>
+                <span class="month-key">{m.key}</span>
+              </h3>
+            </summary>
             <ol class="month-list" reversed>
               {m.items.map((entry) => (
                 <li class="entry">
                   <a href={`/days/${entry.slug}/`} class="entry-link">
                     <span class="entry-day">{entry.date ? entry.date[2] : '—'}</span>
-                    <span class="entry-main">
-                      <span class="entry-title">{entry.topCards[0] ? entry.topCards[0].title : entry.dateLabel}</span>
-                      <span class="entry-meta">
-                        {entry.cardCount} 张火花 · {entry.collisions.length} 组碰撞
-                        {entry.collisions.length > 0 && (
-                          <span class="entry-collision">{entry.collisions[0]}</span>
-                        )}
-                      </span>
-                    </span>
-                    {entry.featuredSparks.length > 0 && (
-                      <span class="entry-thumbs">
-                        {entry.featuredSparks.slice(0, 3).map((spark) => (
-                          <img src={spark.url} alt={`#${spark.n} — ${spark.title}`} loading="lazy" />
-                        ))}
+                    <span class="entry-title">{entry.title}</span>
+                    {entry.thumb && (
+                      <span class="entry-thumb">
+                        <img src={entry.thumb} alt="" loading="lazy" />
                       </span>
                     )}
                   </a>
                 </li>
               ))}
             </ol>
-          </section>
+          </details>
         ))}
       </div>
     )}
@@ -246,11 +232,7 @@ const latestFeatured = latest ? latest.topCards.map((c) => {
   }
 
   .latest-cta {
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
     margin-top: 2.75rem;
-    flex-wrap: wrap;
   }
 
   .btn-primary {
@@ -271,13 +253,6 @@ const latestFeatured = latest ? latest.topCards.map((c) => {
     color: #fff;
     filter: brightness(1.12);
     box-shadow: var(--shadow-lg), var(--glow);
-  }
-
-  .latest-meta {
-    color: var(--text-dim);
-    font-family: var(--font-mono);
-    font-size: 0.8125rem;
-    letter-spacing: 0.04em;
   }
 
   /* ---- section heads ---- */
@@ -304,14 +279,6 @@ const latestFeatured = latest ? latest.topCards.map((c) => {
   .section-title a { color: inherit; }
   .section-title a:hover { color: var(--accent); }
 
-  .section-meta {
-    margin-top: 0.5rem;
-    color: var(--text-dim);
-    font-family: var(--font-mono);
-    font-size: 0.8125rem;
-    letter-spacing: 0.04em;
-  }
-
   /* ---- tonight (latest issue) ---- */
   .tonight {
     padding: 1rem 1.5rem 5rem;
@@ -319,7 +286,7 @@ const latestFeatured = latest ? latest.topCards.map((c) => {
 
   .tonight-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
     gap: 1.25rem;
   }
 
@@ -412,16 +379,36 @@ const latestFeatured = latest ? latest.topCards.map((c) => {
   .timeline {
     display: flex;
     flex-direction: column;
-    gap: 3.5rem;
+    gap: 2.5rem;
   }
+
+  .month-summary {
+    display: block;
+    position: relative;
+    cursor: pointer;
+    list-style: none;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .month-summary::-webkit-details-marker { display: none; }
+  .month-summary::after {
+    content: '+';
+    position: absolute;
+    right: 0.25rem;
+    top: 0.1rem;
+    font-family: var(--font-mono);
+    font-size: 1.05rem;
+    color: var(--text-dim);
+    transition: color 0.2s;
+  }
+  .month-summary:hover::after { color: var(--accent); }
+  .month[open] > .month-summary::after { content: '−'; color: var(--accent); }
 
   .month-label {
     display: flex;
     align-items: baseline;
     gap: 0.9rem;
-    margin-bottom: 1.25rem;
-    padding-bottom: 0.9rem;
-    border-bottom: 1px solid var(--border);
   }
 
   .month-cn {
@@ -448,8 +435,8 @@ const latestFeatured = latest ? latest.topCards.map((c) => {
   .entry-link {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
-    padding: 1.45rem 1rem;
+    gap: 1.25rem;
+    padding: 0.8rem 1rem;
     margin: 0 -1rem;
     border-radius: var(--radius);
     color: inherit;
@@ -467,11 +454,11 @@ const latestFeatured = latest ? latest.topCards.map((c) => {
   .entry-day {
     flex: 0 0 auto;
     font-family: var(--font-mono);
-    font-size: 2rem;
+    font-size: 1.3rem;
     font-weight: 700;
     line-height: 1;
     color: var(--text-dim);
-    min-width: 2.6rem;
+    min-width: 2.2rem;
     text-align: right;
     font-variant-numeric: tabular-nums;
     transition: color 0.2s;
@@ -484,17 +471,11 @@ const latestFeatured = latest ? latest.topCards.map((c) => {
     color: transparent;
   }
 
-  .entry-main {
+  .entry-title {
     flex: 1;
     min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-
-  .entry-title {
     font-family: var(--font-serif);
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     font-weight: 700;
     line-height: 1.5;
     color: var(--text);
@@ -503,52 +484,28 @@ const latestFeatured = latest ? latest.topCards.map((c) => {
     white-space: nowrap;
   }
 
-  .entry-meta {
-    display: flex;
-    align-items: baseline;
-    gap: 0.75rem;
-    min-width: 0;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    letter-spacing: 0.06em;
-  }
-
-  .entry-collision {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    letter-spacing: 0.02em;
-    opacity: 0.85;
-  }
-  .entry-collision::before { content: '· '; }
-
-  .entry-thumbs {
+  .entry-thumb {
     flex: 0 0 auto;
-    display: flex;
-    gap: 0.4rem;
   }
 
-  .entry-thumbs img {
-    width: 52px;
-    height: 36px;
+  .entry-thumb img {
+    width: 58px;
+    height: 38px;
     object-fit: cover;
     border-radius: 8px;
     border: 1px solid var(--border);
     display: block;
-    opacity: 0.8;
+    opacity: 0.85;
     transition: opacity 0.2s;
   }
-  .entry-link:hover .entry-thumbs img { opacity: 1; }
+  .entry-link:hover .entry-thumb img { opacity: 1; }
 
   @media (max-width: 760px) {
     .hero { padding: 4rem 1.5rem 3rem; }
     .tonight-grid { grid-template-columns: 1fr; }
-    .entry-link { gap: 1rem; padding: 1.25rem 1rem; }
-    .entry-day { font-size: 1.5rem; min-width: 2rem; }
-    .entry-thumbs { display: none; }
-    .entry-title { white-space: normal; }
-    .entry-collision { display: none; }
+    .entry-link { gap: 0.9rem; padding: 0.75rem; }
+    .entry-day { font-size: 1.1rem; min-width: 1.8rem; }
+    .entry-thumb { display: none; }
+    .entry-title { white-space: normal; font-size: 1rem; }
   }
 </style>
