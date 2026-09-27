@@ -117,6 +117,7 @@ function buildMeta(items) {
   }
 
   const visual = get('画面');
+  let figure = '';
   if (visual) {
     const imgMatch = visual.match(/!\[([^\]]*)\]\(([^)]+)\)/);
     const text = visual.replace(imgMatch ? imgMatch[0] : '', '').trim();
@@ -126,13 +127,14 @@ function buildMeta(items) {
       );
     }
     if (imgMatch) {
-      frag.push(
-        `<img class="spark-image" src="${escapeHtml(imgMatch[2])}" alt="${escapeHtml(imgMatch[1])}" loading="lazy" />`
-      );
+      // Emit the image as a standalone figure right after the meta div; the
+      // rehype wrapper pulls it into the card as its bottom full-bleed image.
+      figure =
+        `<p class="spark-figure"><img src="${escapeHtml(imgMatch[2])}" alt="${escapeHtml(imgMatch[1])}" loading="lazy" /></p>`;
     }
   }
 
-  return frag.join('');
+  return { html: frag.join(''), figure };
 }
 
 export default function remarkWonderlandSparkMeta() {
@@ -187,9 +189,13 @@ export default function remarkWonderlandSparkMeta() {
         return [SKIP, index];
       }
 
-      const metaHtml = `<div class="spark-meta">${buildMeta(kept)}</div>`;
-
-      parent.children[index] = { type: 'html', value: metaHtml };
+      const { html, figure } = buildMeta(kept);
+      const metaNode = { type: 'html', value: `<div class="spark-meta">${html}</div>` };
+      if (figure) {
+        parent.children.splice(index, 1, metaNode, { type: 'html', value: figure });
+        return [SKIP, index + 2];
+      }
+      parent.children[index] = metaNode;
       return [SKIP, index + 1];
     });
   };

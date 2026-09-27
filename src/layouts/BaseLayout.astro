@@ -35,6 +35,7 @@ const homeClass = isHome ? 'active' : '';
   </head>
   <body>
     <canvas id="aurora-canvas" aria-hidden="true"></canvas>
+    <div id="grain" aria-hidden="true"></div>
 
     <header class="site-header" id="site-header">
       <div class="header-inner">
@@ -144,8 +145,9 @@ const homeClass = isHome ? 'active' : '';
     </script>
 
     <script is:inline>
-      // Aurora backdrop: slow drifting light bands + faint starfield on a 2D canvas.
-      // Paused when the tab is hidden; static single frame under reduced motion.
+      // Backdrop: three oversized, very faint glows drifting slowly across the
+      // whole viewport. Paused when the tab is hidden; static single frame
+      // under reduced motion.
       (function() {
         var canvas = document.getElementById('aurora-canvas');
         if (!canvas) return;
@@ -156,14 +158,11 @@ const homeClass = isHome ? 'active' : '';
         var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
         var w = 0, h = 0, raf = 0, frame = 0;
 
-        var BANDS = [
-          { rgb: '167,139,250', base: 0.16, thick: 0.44, amp: 0.05, speed: 0.0000075, phase: 0.0, alpha: 0.095 },
-          { rgb: '103,232,249', base: 0.30, thick: 0.36, amp: 0.07, speed: 0.0000053, phase: 2.1, alpha: 0.07 },
-          { rgb: '249,168,212', base: 0.08, thick: 0.30, amp: 0.04, speed: 0.0000097, phase: 4.4, alpha: 0.045 },
-          { rgb: '124, 92, 246', base: 0.42, thick: 0.40, amp: 0.06, speed: 0.0000043, phase: 1.3, alpha: 0.055 }
+        var BLOBS = [
+          { rgb: '167,139,250', x: 0.22, y: 0.18, r: 0.55, ax: 0.13, ay: 0.10, sx: 0.0000082, sy: 0.0000059, a: 0.15 },
+          { rgb: '103,232,249', x: 0.82, y: 0.50, r: 0.50, ax: 0.11, ay: 0.13, sx: 0.0000054, sy: 0.0000071, a: 0.11 },
+          { rgb: '249,168,212', x: 0.45, y: 0.92, r: 0.48, ax: 0.15, ay: 0.09, sx: 0.0000063, sy: 0.0000047, a: 0.08 }
         ];
-
-        var stars = [];
 
         function isDark() {
           var t = document.documentElement.getAttribute('data-theme');
@@ -178,68 +177,29 @@ const homeClass = isHome ? 'active' : '';
           canvas.width = Math.round(w * dpr);
           canvas.height = Math.round(h * dpr);
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-          stars = [];
-          var count = Math.round((w * h) / 14000);
-          for (var i = 0; i < count; i++) {
-            stars.push({
-              x: Math.random() * w,
-              y: Math.random() * h * 0.75,
-              r: Math.random() * 1.1 + 0.3,
-              p: Math.random() * Math.PI * 2,
-              s: 0.00008 + Math.random() * 0.00018
-            });
-          }
-          if (reduced) draw(12000);
-        }
-
-        function bandCenter(b, x, t) {
-          var nx = x / w;
-          return (b.base
-            + Math.sin(nx * 2.4 + t * b.speed * 1000 + b.phase) * b.amp
-            + Math.sin(nx * 5.1 - t * b.speed * 640 + b.phase * 1.7) * b.amp * 0.45
-          ) * h;
+          if (reduced) draw(9000);
         }
 
         function draw(t) {
-          var dark = isDark();
           ctx.clearRect(0, 0, w, h);
-
-          if (dark) {
-            ctx.fillStyle = 'rgba(237,237,244,1)';
-            for (var i = 0; i < stars.length; i++) {
-              var s = stars[i];
-              var tw = 0.2 + 0.16 * (0.5 + 0.5 * Math.sin(t * s.s * 1000 + s.p));
-              ctx.globalAlpha = tw;
-              ctx.beginPath();
-              ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-              ctx.fill();
-            }
-            ctx.globalAlpha = 1;
-          }
-
-          var mood = dark ? 1 : 0.42;
-          for (var j = 0; j < BANDS.length; j++) {
-            var b = BANDS[j];
-            var top = [], x;
-            for (x = -40; x <= w + 40; x += 36) top.push([x, bandCenter(b, x, t)]);
-            var thick = b.thick * h;
-            var grad = ctx.createLinearGradient(0, top[0][1] - thick * 0.5, 0, top[0][1] + thick * 0.5);
-            grad.addColorStop(0, 'rgba(' + b.rgb + ',0)');
-            grad.addColorStop(0.5, 'rgba(' + b.rgb + ',' + (b.alpha * mood).toFixed(3) + ')');
-            grad.addColorStop(1, 'rgba(' + b.rgb + ',0)');
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.moveTo(top[0][0], top[0][1]);
-            for (var k = 1; k < top.length; k++) ctx.lineTo(top[k][0], top[k][1]);
-            for (var m = top.length - 1; m >= 0; m--) ctx.lineTo(top[m][0], top[m][1] + thick);
-            ctx.closePath();
-            ctx.fill();
+          var mood = isDark() ? 0.5 : 0.4;
+          var R = Math.max(w, h);
+          for (var i = 0; i < BLOBS.length; i++) {
+            var b = BLOBS[i];
+            var cx = (b.x + Math.sin(t * b.sx) * b.ax) * w;
+            var cy = (b.y + Math.cos(t * b.sy) * b.ay) * h;
+            var rad = b.r * R;
+            var g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+            g.addColorStop(0, 'rgba(' + b.rgb + ',' + (b.a * mood).toFixed(3) + ')');
+            g.addColorStop(1, 'rgba(' + b.rgb + ',0)');
+            ctx.fillStyle = g;
+            ctx.fillRect(cx - rad, cy - rad, rad * 2, rad * 2);
           }
         }
 
         function loop(t) {
           frame++;
-          if (frame % 2 === 0) draw(t); // ~30fps is plenty for a slow drift
+          if (frame % 3 === 0) draw(t); // ~20fps is enough for a slow drift
           raf = requestAnimationFrame(loop);
         }
 
@@ -430,6 +390,16 @@ const homeClass = isHome ? 'active' : '';
     height: 100%;
     z-index: 0;
     pointer-events: none;
+  }
+
+  /* film grain: static paper-like texture over the drifting glows */
+  #grain {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.06;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='160' height='160' filter='url(%23n)' opacity='0.55'/></svg>");
   }
 
   /* ---- scroll reveal ---- */

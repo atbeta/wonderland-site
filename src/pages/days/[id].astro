@@ -430,24 +430,17 @@ const older = sorted[idx + 1];
     font-family: var(--font-serif);
   }
 
-  /* Image sitting as its own paragraph immediately after a spark card */
-  .day-body section.spark-card + p:has(> img) {
-    margin: -0.75rem 0 2.5rem;
-    text-align: center;
-  }
-  .day-body section.spark-card + p > img {
+  /* Card illustration: full-bleed image at the card's bottom edge */
+  .day-body section.spark-card > .spark-figure { margin: 0; }
+  .day-body section.spark-card .spark-figure img {
     display: block;
     width: 100%;
-    max-width: 720px;
-    margin: 0 auto;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
+    max-width: none;
+    margin: 0;
+    border: none;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
     background: var(--bg-alt);
-    transition: transform 0.5s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s;
-  }
-  .day-body section.spark-card + p > img:hover {
-    transform: scale(1.015);
-    box-shadow: var(--shadow-md);
   }
 
   /* Quote inside a spark card (连接点分析 blockquote) gets softer styling */
