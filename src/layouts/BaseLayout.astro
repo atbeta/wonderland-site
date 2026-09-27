@@ -145,8 +145,9 @@ const homeClass = isHome ? 'active' : '';
     </script>
 
     <script is:inline>
-      // Backdrop: three oversized, very faint glows drifting slowly across the
-      // whole viewport. Paused when the tab is hidden; static single frame
+      // Backdrop: three oversized, very faint glows drifting across the whole
+      // viewport on 30-55s orbits, breathing in radius and alpha, with a soft
+      // pointer parallax. Paused when the tab is hidden; static single frame
       // under reduced motion.
       (function() {
         var canvas = document.getElementById('aurora-canvas');
@@ -155,14 +156,21 @@ const homeClass = isHome ? 'active' : '';
         if (!ctx) return;
 
         var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+        // Soft gradients hide the low render resolution; this keeps the
+        // per-frame cost of three full-screen radial fills negligible.
+        var dpr = Math.min(window.devicePixelRatio || 1, 1.5) * 0.6;
         var w = 0, h = 0, raf = 0, frame = 0;
 
+        // Periods of 30-55s: motion registers within a few seconds of watching,
+        // yet stays calm. px/py are breathing phases; each blob also sways in
+        // radius and alpha. Parallax factors give the mouse a gentle pull.
         var BLOBS = [
-          { rgb: '167,139,250', x: 0.22, y: 0.18, r: 0.55, ax: 0.13, ay: 0.10, sx: 0.0000082, sy: 0.0000059, a: 0.15 },
-          { rgb: '103,232,249', x: 0.82, y: 0.50, r: 0.50, ax: 0.11, ay: 0.13, sx: 0.0000054, sy: 0.0000071, a: 0.11 },
-          { rgb: '249,168,212', x: 0.45, y: 0.92, r: 0.48, ax: 0.15, ay: 0.09, sx: 0.0000063, sy: 0.0000047, a: 0.08 }
+          { rgb: '167,139,250', x: 0.22, y: 0.18, r: 0.55, ax: 0.16, ay: 0.12, px: 38000, py: 47000, pr: 31000, pa: 43000, a: 0.15, par: 0.030 },
+          { rgb: '103,232,249', x: 0.82, y: 0.50, r: 0.50, ax: 0.14, ay: 0.16, px: 52000, py: 36000, pr: 41000, pa: 34000, a: 0.11, par: -0.045 },
+          { rgb: '249,168,212', x: 0.45, y: 0.92, r: 0.48, ax: 0.18, ay: 0.11, px: 29000, py: 55000, pr: 47000, pa: 39000, a: 0.08, par: 0.060 }
         ];
+        var TAU = Math.PI * 2;
+        var mx = 0, my = 0, tx = 0, ty = 0; // mouse parallax, eased
 
         function isDark() {
           var t = document.documentElement.getAttribute('data-theme');
@@ -184,13 +192,17 @@ const homeClass = isHome ? 'active' : '';
           ctx.clearRect(0, 0, w, h);
           var mood = isDark() ? 0.5 : 0.4;
           var R = Math.max(w, h);
+          // ease the parallax toward the pointer so it glides instead of snapping
+          mx += (tx - mx) * 0.03;
+          my += (ty - my) * 0.03;
           for (var i = 0; i < BLOBS.length; i++) {
             var b = BLOBS[i];
-            var cx = (b.x + Math.sin(t * b.sx) * b.ax) * w;
-            var cy = (b.y + Math.cos(t * b.sy) * b.ay) * h;
-            var rad = b.r * R;
+            var cx = (b.x + Math.sin((t / b.px) * TAU) * b.ax + mx * b.par) * w;
+            var cy = (b.y + Math.cos((t / b.py) * TAU) * b.ay + my * b.par) * h;
+            var rad = b.r * R * (1 + Math.sin((t / b.pr) * TAU) * 0.08);
+            var alpha = b.a * mood * (1 + Math.sin((t / b.pa) * TAU) * 0.22);
             var g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
-            g.addColorStop(0, 'rgba(' + b.rgb + ',' + (b.a * mood).toFixed(3) + ')');
+            g.addColorStop(0, 'rgba(' + b.rgb + ',' + alpha.toFixed(3) + ')');
             g.addColorStop(1, 'rgba(' + b.rgb + ',0)');
             ctx.fillStyle = g;
             ctx.fillRect(cx - rad, cy - rad, rad * 2, rad * 2);
@@ -199,9 +211,14 @@ const homeClass = isHome ? 'active' : '';
 
         function loop(t) {
           frame++;
-          if (frame % 3 === 0) draw(t); // ~20fps is enough for a slow drift
+          if (frame % 2 === 0) draw(t); // ~30fps, plenty for a slow drift
           raf = requestAnimationFrame(loop);
         }
+
+        window.addEventListener('pointermove', function(e) {
+          tx = e.clientX / w - 0.5;
+          ty = e.clientY / h - 0.5;
+        }, { passive: true });
 
         function start() { if (!raf && !reduced) raf = requestAnimationFrame(loop); }
         function stop() { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
