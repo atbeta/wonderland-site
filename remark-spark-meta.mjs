@@ -72,6 +72,38 @@ function inlineToPlain(children) {
 
 const cleanValue = (v) => v.replace(/^[\s]*[:：]\s*/, '').trim();
 
+// 锚点 entries are separated by " / " or " | ". Whitespace around the slash
+// is required so "Zymergen/Ginkgo" and "top/heart/base" survive intact.
+function splitRefs(refs) {
+  return refs
+    .split(/\s*\|\s*|\s+\/\s*|\s\/\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+// Leading identifiers become mono chips linked to their resolver.
+const REF_ID_PATTERNS = [
+  [/^(arXiv:)([a-z-]+(?:\.[a-z]{2})?\/\d{7}|\d{4}\.\d{4,5})(v\d+)?/i, (m) => `https://arxiv.org/abs/${m[2]}`],
+  [/^(PMC)(\d{5,})\b/i, (m) => `https://pmc.ncbi.nlm.nih.gov/articles/PMC${m[2]}/`],
+  [/^(PMID:?)\s*(\d{6,})\b/i, (m) => `https://pubmed.ncbi.nlm.nih.gov/${m[2]}/`],
+  [/^(DOI:?\s*)(10\.\d{4,9}\/\S+)/i, (m) => `https://doi.org/${m[2]}`],
+  [/^(IEEE\s*)(\d{5,})\b/, (m) => `https://ieeexplore.ieee.org/document/${m[2]}`],
+];
+
+function renderRef(entry) {
+  for (const [re, toUrl] of REF_ID_PATTERNS) {
+    const m = entry.match(re);
+    if (!m) continue;
+    const id = m[0];
+    const rest = entry.slice(id.length).trim();
+    return (
+      `<a class="ref-id" href="${toUrl(m)}" target="_blank" rel="noopener">${escapeHtml(id)}</a>` +
+      (rest ? escapeHtml(rest) : '')
+    );
+  }
+  return escapeHtml(entry);
+}
+
 // Assemble the meta div in a fixed editorial order, regardless of the
 // source order of the fields.
 function buildMeta(items) {
@@ -111,8 +143,10 @@ function buildMeta(items) {
 
   const refs = get('锚点');
   if (refs) {
+    const entries = splitRefs(refs);
+    const items = entries.map((e) => `<li>${renderRef(e)}</li>`).join('');
     frag.push(
-      `<details class="spark-fold"><summary>参考文献</summary><p>${escapeHtml(refs)}</p></details>`
+      `<details class="spark-fold"><summary>参考文献 <span class="fold-count">${entries.length}</span></summary><ol class="spark-refs">${items}</ol></details>`
     );
   }
 

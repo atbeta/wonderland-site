@@ -368,12 +368,54 @@ const older = sorted[idx + 1];
   .day-body .spark-fold summary::before { content: '▸ '; }
   .day-body .spark-fold[open] summary::before { content: '▾ '; }
   .day-body .spark-fold summary:hover { color: var(--accent); }
+  .day-body .spark-fold .fold-count {
+    color: var(--text-dim);
+    font-size: 0.72rem;
+  }
   .day-body .spark-fold p {
     margin: 0.5rem 0 0.25rem;
     color: var(--text-muted);
     font-size: 0.9rem;
     line-height: 1.7;
   }
+
+  /* 参考文献 as a numbered bibliography, not a wall of text */
+  .day-body .spark-refs {
+    margin: 0.7rem 0 0.25rem;
+    padding: 0;
+    list-style: none;
+    counter-reset: ref;
+    display: grid;
+    gap: 0.5rem;
+  }
+  .day-body .spark-refs li {
+    counter-increment: ref;
+    position: relative;
+    padding-left: 2rem;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    line-height: 1.65;
+  }
+  .day-body .spark-refs li::before {
+    content: counter(ref, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 0.15em;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+  .day-body .spark-refs .ref-id {
+    margin-right: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.18s;
+  }
+  .day-body .spark-refs a.ref-id:hover { border-bottom-color: var(--accent); }
 
   /* Image embedded inside the meta block (old-format days put it in 画面) */
   .day-body .spark-meta .spark-image {
