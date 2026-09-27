@@ -196,15 +196,13 @@ const older = sorted[idx + 1];
   .day-body li { margin: 0.35rem 0; }
 
   .day-body blockquote {
-    border-left: 2px solid transparent;
-    border-image: var(--grad) 1;
     margin: 1.25rem 0;
-    padding: 0.75rem 0 0.75rem 1.25rem;
+    padding: 0.85rem 1.25rem;
     color: var(--text-muted);
     font-style: italic;
     font-family: var(--font-serif);
     background: var(--accent-subtle);
-    border-radius: 0 var(--radius) var(--radius) 0;
+    border-radius: var(--radius);
   }
 
   .day-body img {
@@ -258,7 +256,6 @@ const older = sorted[idx + 1];
 
   /* ---- spark card ---- */
   .day-body section.spark-card {
-    position: relative;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
@@ -268,24 +265,14 @@ const older = sorted[idx + 1];
     scroll-margin-top: 5.5rem;
     transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
   }
-  .day-body section.spark-card::before {
-    content: '';
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 3px;
-    background: var(--grad);
-    opacity: 0.55;
-    transition: opacity 0.3s;
-  }
   .day-body section.spark-card:hover {
     border-color: var(--border-strong);
     box-shadow: var(--shadow-md), var(--glow);
   }
-  .day-body section.spark-card:hover::before { opacity: 1; }
 
   .day-body section.spark-card > h3 {
     margin: 0;
-    padding: 1.25rem 1.5rem 1.1rem 1.75rem;
+    padding: 1.25rem 1.5rem 1.1rem;
     color: var(--text);
     font-family: var(--font-serif);
     font-size: 1.25rem;
@@ -312,7 +299,7 @@ const older = sorted[idx + 1];
 
   /* ---- card meta: editorial layout, no label column ---- */
   .day-body .spark-meta {
-    padding: 1.15rem 1.5rem 1.3rem 1.75rem;
+    padding: 1.15rem 1.5rem 1.3rem;
     font-size: 0.9375rem;
     line-height: 1.75;
   }
@@ -341,14 +328,12 @@ const older = sorted[idx + 1];
     color: var(--text);
   }
 
-  /* 如果要做 as a highlighted note */
+  /* 如果要做 as a tinted note */
   .day-body .spark-todo {
     margin: 0 0 1.1rem;
-    padding: 0.85rem 1rem 0.85rem 1.15rem;
-    border-left: 2px solid transparent;
-    border-image: var(--grad) 1;
+    padding: 0.85rem 1.15rem;
     background: var(--accent-subtle);
-    border-radius: 0 var(--radius) var(--radius) 0;
+    border-radius: var(--radius);
     color: var(--text-muted);
     font-size: 0.95rem;
     line-height: 1.75;
@@ -467,13 +452,13 @@ const older = sorted[idx + 1];
 
   /* Quote inside a spark card (连接点分析 blockquote) gets softer styling */
   .day-body section.spark-card blockquote {
-    margin: 0.75rem 1.5rem 0.75rem 1.75rem;
+    margin: 0.75rem 1.5rem;
     background: var(--bg-alt);
   }
 
   @media (max-width: 640px) {
-    .day-body section.spark-card > h3 { padding: 1.1rem 1.25rem 1rem 1.5rem; }
-    .day-body .spark-meta { padding: 1rem 1.25rem 1.15rem 1.5rem; }
+    .day-body section.spark-card > h3 { padding: 1.1rem 1.25rem 1rem; }
+    .day-body .spark-meta { padding: 1rem 1.25rem 1.15rem; }
   }
 </style>
 
