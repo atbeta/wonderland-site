@@ -1,17 +1,24 @@
-// remark plugin: turn spark-card metadata lines into <dl class="spark-meta">
+// remark plugin: turn spark-card metadata lines into <div class="spark-meta">
 //
 // Walks each paragraph's inline children. A paragraph qualifies as a spark
 // metadata block when its first inline child is a `<strong>` whose text
 // matches one of the known metadata keys (碰撞 / 连接点 / 锚点 / 族 / 状态 /
 // 如果要做 / 画面 / 惊讶度 / 具体度 / 可行动度). Subsequent values are
-// collected until the next <strong>**K**: marker; everything between
-// markers becomes one <dd> for that <dt>.
+// collected until the next <strong>**K**: marker.
 //
-// Presentation decisions baked in here:
-// - 碰撞 rows are dropped (the group heading already carries A × B).
-// - 状态 rows are dropped (the value is the constant "火花" archive-wide).
-// - Consecutive score keys render as one merged 评分 row.
-// - 画面 values fold into <details>; any embedded image stays visible.
+// The output is editorial, not a record table — no dt/dd label column:
+//   tags row  : 族 chip + compact scores (惊讶 9 · 具体 9 · 可行 8)
+//   lede      : 连接点, full-width prose
+//   callout   : 如果要做, highlighted note
+//   folds     : 锚点 (参考文献) and 画面 (生图提示词) in <details>;
+//               an image embedded in 画面 stays visible outside the fold
+// Dropped entirely: 碰撞 (the group heading already carries A × B) and
+// 状态 (the constant "火花" archive-wide).
+//
+// Also catches depth-2 headings whose first inline child is a meta key: a
+// `---` on the very next line after a meta paragraph is a setext underline,
+// so those paragraphs arrive as h2 nodes (a few old archives miss the blank
+// line). Same inline shape, same handling.
 
 import { visit, SKIP } from 'unist-util-visit';
 
@@ -22,7 +29,7 @@ const META_KEYS = new Set([
 
 const DROP_KEYS = new Set(['碰撞', '状态']);
 
-const SCORE_KEYS = new Set(['惊讶度', '具体度', '可行动度']);
+const SCORE_ORDER = ['惊讶度', '具体度', '可行动度'];
 const SCORE_LABELS = { 惊讶度: '惊讶', 具体度: '具体', 可行动度: '可行' };
 
 function escapeHtml(s) {
@@ -63,60 +70,78 @@ function inlineToPlain(children) {
     .join('');
 }
 
-// One `<dt>评分</dt><dd>…</dd>` merging a run of score items into
-// a single row: `惊讶 9 ▮ / 具体 9 ▮ / 可行 8 ▮`.
-function renderScoreRow(items) {
-  const inner = items.map(({ key, value }) => {
-    const cleaned = value.replace(/^[\s]*[:：]\s*/, '');
-    const numMatch = cleaned.match(/(\d+)/);
-    const num = numMatch ? Number(numMatch[1]) : null;
-    const numHtml = num !== null
-      ? `<span class="score-num">${num}</span>`
-      : `<span>${escapeHtml(cleaned)}</span>`;
-    const barHtml = num !== null
-      ? `<span class="score-bar" aria-hidden="true">` +
-          `<span class="score-bar-fill" style="width:${num * 10}%"></span>` +
-        `</span>`
-      : '';
-    const label = SCORE_LABELS[key] || escapeHtml(key);
-    return `<span class="score-item"><span class="score-label">${label}</span>${numHtml}${barHtml}</span>`;
-  }).join('');
-  return `<dt class="dt-score">评分</dt><dd class="dd-score">${inner}</dd>`;
-}
+const cleanValue = (v) => v.replace(/^[\s]*[:：]\s*/, '').trim();
 
-// A single non-score `<dt>key</dt><dd>…</dd>` row.
-function renderMetaRow({ key, value }) {
-  const cleaned = value.replace(/^[\s]*[:：]\s*/, '');
+// Assemble the meta div in a fixed editorial order, regardless of the
+// source order of the fields.
+function buildMeta(items) {
+  const byKey = new Map();
+  for (const it of items) {
+    if (!byKey.has(it.key)) byKey.set(it.key, it.value);
+  }
+  const get = (k) => (byKey.has(k) ? cleanValue(byKey.get(k)) : null);
 
-  // If the value carries an image, splice it out and emit as real <img>
-  // so the browser renders it. Otherwise fall back to escaped text.
-  const imgMatch = cleaned.match(/!\[([^\]]*)\]\(([^)]+)\)/);
-  const imgHtml = imgMatch
-    ? `<img class="dd-image" src="${escapeHtml(imgMatch[2])}" alt="${escapeHtml(imgMatch[1])}" loading="lazy" />`
-    : '';
-  const text = cleaned.replace(imgMatch ? imgMatch[0] : '', '').trim();
+  const frag = [];
 
-  let ddInner;
-  if (key === '画面') {
-    // 画面 is the image-generation prompt: workflow metadata, folded
-    // away; an embedded image stays visible outside the fold.
-    ddInner = (text
-      ? `<details class="dd-fold"><summary>生图提示词</summary><p>${escapeHtml(text)}</p></details>`
-      : '') + imgHtml;
-  } else if (imgMatch) {
-    ddInner = (text ? `${escapeHtml(text)}<br>` : '') + imgHtml;
-  } else {
-    ddInner = escapeHtml(text);
+  // tags row: 族 chip + compact score line
+  const tags = [];
+  const family = get('族');
+  if (family) tags.push(`<span class="chip spark-family">${escapeHtml(family)}</span>`);
+  const scores = [];
+  for (const k of SCORE_ORDER) {
+    const v = get(k);
+    if (v === null) continue;
+    const m = v.match(/(\d+)/);
+    scores.push(`${SCORE_LABELS[k]} ${m ? m[1] : v}`);
+  }
+  if (scores.length) {
+    tags.push(`<span class="spark-scores">${escapeHtml(scores.join(' · '))}</span>`);
+  }
+  if (tags.length) frag.push(`<p class="spark-tags">${tags.join('')}</p>`);
+
+  const lede = get('连接点');
+  if (lede) frag.push(`<p class="spark-lede">${escapeHtml(lede)}</p>`);
+
+  const todo = get('如果要做');
+  if (todo) {
+    frag.push(
+      `<p class="spark-todo"><span class="todo-label">如果要做</span>${escapeHtml(todo)}</p>`
+    );
   }
 
-  return `<dt class="dt-meta">${escapeHtml(key)}</dt>` +
-         `<dd class="dd-meta">${ddInner}</dd>`;
+  const refs = get('锚点');
+  if (refs) {
+    frag.push(
+      `<details class="spark-fold"><summary>参考文献</summary><p>${escapeHtml(refs)}</p></details>`
+    );
+  }
+
+  const visual = get('画面');
+  if (visual) {
+    const imgMatch = visual.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+    const text = visual.replace(imgMatch ? imgMatch[0] : '', '').trim();
+    if (text) {
+      frag.push(
+        `<details class="spark-fold"><summary>生图提示词</summary><p>${escapeHtml(text)}</p></details>`
+      );
+    }
+    if (imgMatch) {
+      frag.push(
+        `<img class="spark-image" src="${escapeHtml(imgMatch[2])}" alt="${escapeHtml(imgMatch[1])}" loading="lazy" />`
+      );
+    }
+  }
+
+  return frag.join('');
 }
 
 export default function remarkWonderlandSparkMeta() {
   return (tree) => {
-    visit(tree, 'paragraph', (node, index, parent) => {
+    visit(tree, ['paragraph', 'heading'], (node, index, parent) => {
       if (!parent || index == null) return;
+      // Only setext-swallowed meta blocks: a depth-2 heading whose first
+      // inline child is a meta key. Real section headings never match.
+      if (node.type === 'heading' && node.depth !== 2) return;
       const children = node.children;
       if (!Array.isArray(children) || children.length === 0) return;
 
@@ -126,10 +151,8 @@ export default function remarkWonderlandSparkMeta() {
       const firstKey = strongText(first).trim();
       if (!META_KEYS.has(firstKey)) return;
 
-      // Walk children, alternating key spans (rendered as <dt>) and value
-      // spans (rendered as <dd>). A "key span" = a <strong> child whose text
-      // is a known META_KEYS entry. We allow leading text before the first
-      // key (rare, but tolerant).
+      // Walk children, alternating key spans and value spans. A "key span" =
+      // a <strong> child whose text is a known META_KEYS entry.
       const items = [];
       let current = null;
       const flush = () => {
@@ -164,24 +187,9 @@ export default function remarkWonderlandSparkMeta() {
         return [SKIP, index];
       }
 
-      // Consecutive score items merge into one 评分 row; everything else
-      // renders as its own row, in original order.
-      const fragments = [];
-      for (let i = 0; i < kept.length; i++) {
-        if (SCORE_KEYS.has(kept[i].key)) {
-          let j = i;
-          while (j < kept.length && SCORE_KEYS.has(kept[j].key)) j++;
-          fragments.push(renderScoreRow(kept.slice(i, j)));
-          i = j - 1;
-        } else {
-          fragments.push(renderMetaRow(kept[i]));
-        }
-      }
-      const parts = fragments.join('');
+      const metaHtml = `<div class="spark-meta">${buildMeta(kept)}</div>`;
 
-      const dlHtml = `<dl class="spark-meta">${parts}</dl>`;
-
-      parent.children[index] = { type: 'html', value: dlHtml };
+      parent.children[index] = { type: 'html', value: metaHtml };
       return [SKIP, index + 1];
     });
   };

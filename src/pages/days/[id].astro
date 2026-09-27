@@ -310,32 +310,57 @@ const older = sorted[idx + 1];
     color: transparent;
   }
 
-  .day-body dl.spark-meta {
-    display: grid;
-    grid-template-columns: 6.5rem 1fr;
-    gap: 0.9rem 1.5rem;
-    margin: 0;
-    padding: 1.25rem 1.5rem 1.4rem 1.75rem;
+  /* ---- card meta: editorial layout, no label column ---- */
+  .day-body .spark-meta {
+    padding: 1.15rem 1.5rem 1.3rem 1.75rem;
     font-size: 0.9375rem;
     line-height: 1.75;
   }
 
-  .day-body .spark-meta dt {
-    color: var(--text-dim);
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    font-weight: 500;
-    letter-spacing: 0.12em;
-    padding-top: 0.3rem;
-    align-self: start;
+  /* tags row: 族 chip + compact score line */
+  .day-body .spark-tags {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin: 0 0 1rem;
   }
 
-  .day-body .spark-meta dd {
-    margin: 0;
+  .day-body .spark-scores {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+  }
+
+  /* 连接点 reads as the card's lede */
+  .day-body .spark-lede {
+    margin: 0 0 1.1rem;
+    font-size: 1rem;
+    line-height: 1.85;
     color: var(--text);
   }
 
-  .day-body .spark-meta dt.dt-score {
+  /* 如果要做 as a highlighted note */
+  .day-body .spark-todo {
+    margin: 0 0 1.1rem;
+    padding: 0.85rem 1rem 0.85rem 1.15rem;
+    border-left: 2px solid transparent;
+    border-image: var(--grad) 1;
+    background: var(--accent-subtle);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.75;
+  }
+
+  .day-body .todo-label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
     background: var(--grad);
     -webkit-background-clip: text;
     background-clip: text;
@@ -343,71 +368,42 @@ const older = sorted[idx + 1];
     color: transparent;
   }
 
-  /* Merged 评分 row: 惊讶 9 ▮ / 具体 9 ▮ / 可行 8 ▮ */
-  .day-body .spark-meta .dd-score {
-    display: flex;
-    align-items: center;
-    gap: 1.1rem;
-    flex-wrap: wrap;
-  }
-
-  .day-body .score-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-  }
-
-  .day-body .score-label {
-    font-size: 0.78rem;
-    color: var(--text-dim);
-    letter-spacing: 0.08em;
-  }
-
-  .day-body .score-item .score-bar {
-    width: 56px;
-    flex: 0 0 56px;
-  }
-
-  .day-body .spark-meta .score-num {
-    font-family: var(--font-mono);
-    font-size: 0.9375rem;
-    font-weight: 700;
-    color: var(--text);
-    min-width: 2rem;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .day-body .spark-meta .score-bar {
-    display: inline-block;
-    height: 3px;
-    border-radius: 999px;
-    background: var(--border);
-    overflow: hidden;
-  }
-
-  .day-body .spark-meta .score-bar-fill {
-    display: block;
-    height: 100%;
-    background: var(--grad);
-    border-radius: 999px;
-    transition: width 0.6s cubic-bezier(0.2, 0, 0.2, 1);
-  }
-
-  /* 画面 prompt folded into <details>; the image itself stays visible */
-  .day-body .dd-fold { margin: 0; }
-  .day-body .dd-fold summary {
+  /* 参考文献 / 生图提示词 folded by default */
+  .day-body .spark-fold { margin: 0.3rem 0; }
+  .day-body .spark-fold summary {
     cursor: pointer;
     color: var(--text-dim);
-    font-size: 0.85rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
     list-style: none;
+    transition: color 0.18s;
   }
-  .day-body .dd-fold summary::-webkit-details-marker { display: none; }
-  .day-body .dd-fold summary::before { content: '▸ '; }
-  .day-body .dd-fold[open] summary::before { content: '▾ '; }
-  .day-body .dd-fold p {
-    margin: 0.5rem 0 0;
+  .day-body .spark-fold summary::-webkit-details-marker { display: none; }
+  .day-body .spark-fold summary::before { content: '▸ '; }
+  .day-body .spark-fold[open] summary::before { content: '▾ '; }
+  .day-body .spark-fold summary:hover { color: var(--accent); }
+  .day-body .spark-fold p {
+    margin: 0.5rem 0 0.25rem;
     color: var(--text-muted);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+
+  /* Image embedded inside the meta block (old-format days put it in 画面) */
+  .day-body .spark-meta .spark-image {
+    display: block;
+    width: 100%;
+    max-width: 720px;
+    margin: 1rem 0 0.25rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg-alt);
+    transition: transform 0.5s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s;
+  }
+  .day-body .spark-meta .spark-image:hover {
+    transform: scale(1.015);
+    box-shadow: var(--shadow-md);
   }
 
   /* Gallery (## 配图) */
@@ -449,22 +445,6 @@ const older = sorted[idx + 1];
     font-family: var(--font-serif);
   }
 
-  /* Image embedded inside the spark card (e.g. "画面" row carrying ![]()) */
-  .day-body .spark-meta .dd-image {
-    display: block;
-    width: 100%;
-    max-width: 720px;
-    margin: 0.75rem 0 0.25rem;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    background: var(--bg-alt);
-    transition: transform 0.5s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s;
-  }
-  .day-body .spark-meta .dd-image:hover {
-    transform: scale(1.015);
-    box-shadow: var(--shadow-md);
-  }
-
   /* Image sitting as its own paragraph immediately after a spark card */
   .day-body section.spark-card + p:has(> img) {
     margin: -0.75rem 0 2.5rem;
@@ -491,20 +471,9 @@ const older = sorted[idx + 1];
     background: var(--bg-alt);
   }
 
-  /* First paragraph of a spark card (often 连接点) reads as the lede */
-  .day-body section.spark-card > p:first-of-type {
-    margin: 1rem 1.5rem 0 1.75rem;
-    color: var(--text-muted);
-    font-size: 0.95rem;
-  }
-
   @media (max-width: 640px) {
-    .day-body dl.spark-meta { grid-template-columns: 1fr; gap: 0.25rem 0; }
-    .day-body .spark-meta dt { padding-top: 0.6rem; }
-    .day-body .spark-meta dt:first-child { padding-top: 0; }
-    .day-body .spark-meta .dd-score { gap: 0.75rem; }
     .day-body section.spark-card > h3 { padding: 1.1rem 1.25rem 1rem 1.5rem; }
-    .day-body dl.spark-meta { padding: 1.1rem 1.25rem 1.25rem 1.5rem; }
+    .day-body .spark-meta { padding: 1rem 1.25rem 1.15rem 1.5rem; }
   }
 </style>
 

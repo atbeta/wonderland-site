@@ -1,12 +1,33 @@
-// rehype plugin: wrap each `<h3>💥 #N — …</h3>` + adjacent
-// `<dl class="spark-meta">…</dl>` in a `<section class="spark-card">`
-// so the day page can style them as coherent cards.
+// rehype plugin: wrap each `<h3>💥 #N — …</h3>` + the following
+// `<div class="spark-meta">…</div>` nodes in a `<section class="spark-card">`
+// so the day page can style them as coherent cards. A card's meta may arrive
+// as several consecutive divs when the source paragraph was split by a blank
+// line — all of them belong inside the section.
 
 import { visit, SKIP } from 'unist-util-visit';
 
-// Match a raw <dl class="spark-meta">…</dl> html string in an mdast
+// Match a raw <div class="spark-meta">…</div> html string in an mdast
 // "raw" / rehype "raw" node. We only need to detect the tag, not parse it.
-const RAW_DL_PATTERN = /^<dl class="spark-meta">/;
+const RAW_META_PATTERN = /^<div class="spark-meta">/;
+
+const isWhitespace = (n) => n.type === 'text' && /^\s*$/.test(n.value);
+
+function isMetaDiv(n) {
+  if (!n) return false;
+  if (
+    n.type === 'element' &&
+    n.tagName === 'div' &&
+    Array.isArray(n.properties?.className) &&
+    n.properties.className.includes('spark-meta')
+  ) {
+    return true;
+  }
+  return (
+    n.type === 'raw' &&
+    typeof n.value === 'string' &&
+    RAW_META_PATTERN.test(n.value.trimStart())
+  );
+}
 
 export default function rehypeSparkCard() {
   return (tree) => {
@@ -14,43 +35,33 @@ export default function rehypeSparkCard() {
       if (!parent || index == null) return;
       if (node.tagName !== 'h3') return;
 
-      // Skip leading whitespace text nodes.
+      // Collect every consecutive spark-meta div after the h3 (whitespace
+      // text nodes in between are dropped with the splice).
+      const children = [node];
       let cursor = index + 1;
+      let end = index + 1;
       while (cursor < parent.children.length) {
         const n = parent.children[cursor];
-        if (n.type === 'text' && /^\s*$/.test(n.value)) {
+        if (isWhitespace(n)) {
           cursor++;
+          continue;
+        }
+        if (isMetaDiv(n)) {
+          children.push(n);
+          cursor++;
+          end = cursor;
           continue;
         }
         break;
       }
-      const next = parent.children[cursor];
-      if (!next) return;
+      if (children.length < 2) return;
 
-      // Case 1: next is an actual rehype element <dl>.
-      const isElementDl =
-        next.type === 'element' &&
-        next.tagName === 'dl' &&
-        Array.isArray(next.properties?.className) &&
-        next.properties.className.includes('spark-meta');
-
-      // Case 2: next is a raw-html node holding the dl string we inserted
-      // from the remark plugin. We treat it as the dl sibling.
-      const isRawDl =
-        next.type === 'raw' &&
-        typeof next.value === 'string' &&
-        RAW_DL_PATTERN.test(next.value.trimStart());
-
-      if (!isElementDl && !isRawDl) return;
-
-      // Splice out the (whitespace + dl) range and replace with a wrapping section.
-      // spliceCount must include the dl node itself so we don't double-render it.
-      const spliceCount = (cursor - index) + 1;
-      parent.children.splice(index, spliceCount, {
+      // Splice the h3 + meta range and replace with the wrapping section.
+      parent.children.splice(index, end - index, {
         type: 'element',
         tagName: 'section',
         properties: { className: ['spark-card'] },
-        children: [node, next],
+        children,
       });
 
       return [SKIP, index + 1];
