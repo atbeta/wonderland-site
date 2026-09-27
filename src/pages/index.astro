@@ -9,49 +9,23 @@ const MONTH_NAMES = ['一月','二月','三月','四月','五月','六月','七�
 const allEntries = await getCollection('days');
 const entries = allEntries
   .map((entry) => {
-    const body = entry.body || '';
-    const titleMatch = body.match(/^# Wonderland\s*[—–-]\s*([^\n(]+?)(?:\s*\(run\s+(\d+)\))?\s*$/m);
-
-    // Featured sparks: walk every spark card and pull the image URL that lives
-    // right after its `**画面**` line. The image lives next to the spark it
-    // belongs to, not in a separate gallery section.
-    const sparkBlockRe = /^###\s+💥\s+#(\d+)\s+[—–-]\s+([^\n]+)\n([\s\S]*?)(?=^###\s|^##\s|\Z)/gm;
-    const featuredSparks = [];
-    let sp;
-    while ((sp = sparkBlockRe.exec(body)) !== null) {
-      const n = sp[1];
-      const title = sp[2].trim();
-      const block = sp[3];
-      const imgMatch = block.match(/!\[\s*#\d+\s*[—–-]\s*([^\]]+)\]\(([^)]+)\)/);
-      if (imgMatch) {
-        featuredSparks.push({ n, title: title.replace(/\s*[:：].*$/, ''), url: imgMatch[2] });
-      }
-    }
-
-    const cards = [...body.matchAll(/^###\s+💥\s+#(\d+)\s+[—–-]\s+(.+)$/gm)].map((mm) => ({
-      n: mm[1],
-      title: mm[2].trim(),
-    }));
-    // 组合标题存在数字（组合 1：）与字母（组合 A：）两种形态。
-    let collisions = [...body.matchAll(/^##\s+组合\s+[0-9A-Z]+[：:]\s*(.+?)\s*$/gm)].map((mm) => mm[1].trim());
-    if (collisions.length === 0) {
-      // 无组合标题的期数：从每张卡片的 **碰撞**: 字段提取去重列表。
-      const seen = new Set();
-      for (const mm of body.matchAll(/^\*\*碰撞\*\*[:：]\s*(.+?)\s*$/gm)) {
-        const c = mm[1].trim();
-        if (!seen.has(c)) {
-          seen.add(c);
-          collisions.push(c);
-        }
-        if (collisions.length >= 3) break;
-      }
-    }
+    const data = entry.data;
+    const dm = (data.date || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    // Phase 2: everything below comes from frontmatter (validated by the
+    // collection schema in src/content/config.ts) — no regex over the body.
+    const collisions = (data.groups || []).map(
+      (g) => `${g.a} × ${g.b}${g.constraint ? ` + ${g.constraint}` : ''}`
+    );
+    const cards = (data.cards || []).map((c) => ({ n: c.n, title: c.title }));
+    const featuredSparks = (data.cards || [])
+      .filter((c) => !!c.image)
+      .map((c) => ({ n: c.n, title: c.title.replace(/\s*[:：].*$/, ''), url: c.image }));
 
     return {
       slug: entry.id,
-      dateLabel: titleMatch?.[1].trim() || entry.id,
-      date: entry.id.match(/(\d{4})-(\d{2})-(\d{2})/)?.slice(1) || null,
-      runHint: titleMatch?.[2] || body.match(/\(run\s+(\d+)\)/)?.[1] || null,
+      dateLabel: data.title || data.date || entry.id,
+      date: dm ? [dm[1], dm[2], dm[3]] : null,
+      runHint: null,
       collisions,
       cardCount: cards.length,
       cards,
@@ -61,10 +35,9 @@ const entries = allEntries
     };
   })
   .sort((a, b) => {
-    const dateA = a.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '';
-    const dateB = b.slug.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '';
-    if (dateA !== dateB) return dateB.localeCompare(dateA);
-    return Number(b.runHint || 1) - Number(a.runHint || 1);
+    const da = a.date ? a.date.join('-') : '';
+    const db = b.date ? b.date.join('-') : '';
+    return db.localeCompare(da);
   });
 
 const totalCards = entries.reduce((acc, e) => acc + e.cardCount, 0);

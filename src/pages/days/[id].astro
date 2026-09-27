@@ -13,14 +13,12 @@ export async function getStaticPaths() {
 const { entry } = Astro.props;
 const { Content } = await render(entry);
 
-const body = entry.body || '';
-const titleMatch = body.match(/^# Wonderland\s*[—–-]\s*([^\n(]+?)(?:\s*\(run\s+(\d+)\))?\s*$/m);
-// 组合标题存在数字（组合 1：）与字母（组合 A：）两种形态。
-const collisionToc = [...body.matchAll(/^##\s+组合\s+[0-9A-Z]+[：:]\s*(.+?)\s*$/gm)].map((m) => m[1].trim());
-const sparkCards = [...body.matchAll(/^###\s+💥\s+#(\d+)\s+[—–-]\s+(.+)$/gm)].map((m) => ({
-  n: m[1],
-  title: m[2].trim(),
-}));
+const data = entry.data;
+// Phase 2: TOC + card list come from frontmatter (validated by the collection schema).
+const collisionToc = (data.groups || []).map(
+  (g) => `${g.a} × ${g.b}${g.constraint ? ` + ${g.constraint}` : ''}`
+);
+const sparkCards = (data.cards || []).map((c) => ({ n: c.n, title: c.title }));
 const cardCount = sparkCards.length;
 
 // 目录：有组合标题按组合分节；无组合标题的期数退回卡片锚点列表。
@@ -28,22 +26,13 @@ const toc = collisionToc.length > 0
   ? collisionToc.map((c, i) => ({ num: String(i + 1).padStart(2, '0'), text: c, href: `#collision-${i + 1}` }))
   : sparkCards.map((c) => ({ num: `#${c.n}`, text: c.title, href: `#spark-${c.n}` }));
 
-const dateLabel = titleMatch?.[1]?.trim() || entry.id;
-const runHint = titleMatch?.[2] || null;
+const dateLabel = data.title || data.date || entry.id;
+const runHint = null;
 
 const allEntries = await getCollection('days');
 const sorted = allEntries
-  .map((e) => ({
-    id: e.id,
-    dateLabel: (e.body || '').match(/^# Wonderland\s*[—–-]\s*([^\n(]+?)(?:\s*\(run\s+\d+\))?\s*$/m)?.[1]?.trim() || e.id,
-    runHint: (e.body || '').match(/\(run\s+(\d+)\)/)?.[1] || null,
-  }))
-  .sort((a, b) => {
-    const da = a.id.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '';
-    const db = b.id.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || '';
-    if (da !== db) return db.localeCompare(da);
-    return Number(b.runHint || 1) - Number(a.runHint || 1);
-  });
+  .map((e) => ({ id: e.id, dateLabel: e.data.title || e.data.date || e.id, runHint: null }))
+  .sort((a, b) => b.id.localeCompare(a.id));
 const idx = sorted.findIndex((e) => e.id === entry.id);
 // sorted is newest-first: idx-1 is the newer issue, idx+1 the older one.
 const newer = sorted[idx - 1];
