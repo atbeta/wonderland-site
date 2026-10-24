@@ -61,7 +61,8 @@ fi
 # --- 4) deploy URL: one short, bounded vercel ls (informational only) ---
 DEPLOY="unknown"
 if [[ "${PUSHED}" == "yes" ]]; then
-  _ls="$(timeout "$(remaining)" vercel ls --yes 2>/dev/null || true)";
+  # NOTE: use the EPIPE-safe wrapper, never pipe the real CLI into head/grep -m
+  _ls="$(timeout "$(remaining)" "${SCRIPT_DIR}/bin/vercel" ls --yes 2>/dev/null || true)";
   DEPLOY="$(printf '%s\n' "${_ls}" | grep -oE 'wonderland-site-[a-z0-9]+-betacloud\.vercel\.app' | head -1 || true)";
   DEPLOY="${DEPLOY:-unknown}";
 fi

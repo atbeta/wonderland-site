@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# EPIPE-safe wrapper around the real Vercel CLI.
+#
+# WHY: the Vercel CLI is a Node process and mishandles a closed stdout
+# pipe. As soon as the reader goes away (`... | head -30`, `| head -8`,
+# `| grep -m1`), the CLI busy-loops at 100%+ CPU and balloons to several GB
+# of RSS instead of exiting. That hang is what killed the 04:30 push cron
+# on 10-09, 10-15 and 10-25 (job: 'job execution timed out, last phase:
+# tool-execution-started') even though git push had already succeeded and
+# the site was already serving HTTP 200.
+#
+# Fix: never put a pipe on the CLI's stdout. Capture to a temp file, let
+# the CLI exit on its own, then print the file. Piping the FILE to head
+# is safe (cat handles EPIPE cleanly). A timeout ceiling is applied so no
+# call can outlive its budget.
+#
+# Usage:
+#   export PATH="/opt/openclaw-coder/workspace/projects/personal/wonderland-site/scripts/bin:$PATH"
+#   vercel ls --yes            # now EPIPE-safe
+
+set -uo pipefail
+
+REAL="/usr/local/bin/vercel"
+if [[ ! -x "$REAL" ]]; then
+  REAL="$(command -v vercel 2>/dev/null || true)";
+fi
+if [[ -z "${REAL}" || ! -x "${REAL}" ]]; then
+  echo "vercel-safe: real vercel CLI not found" >&2
+  exit 127
+fi
+
+TIMEOUT="${VERCEL_TIMEOUT:-60}"
+TMP="$(mktemp -t vercel-safe.XXXXXX)"
+trap 'rm -f "$TMP"' EXIT
+
+timeout "$TIMEOUT" "$REAL" "$@" >"$TMP" 2>&1 </dev/null
+status=$?
+
+cat "$TMP"
+exit $status
