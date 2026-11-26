@@ -65,7 +65,7 @@ if [[ $SYNC_ONLY -eq 1 ]]; then exit 0; fi
 git add -A
 COMMIT_SHA="skip"
 if git diff --cached --quiet; then
-  echo "No changes after sync; skipping commit.";
+  echo "NOTHING_TO_PUSH: no new archive since the last push (nightly produced nothing new, or already published) — this is NORMAL, nothing to do.";
 else
   git commit -m "wonderland: nightly archive ${TODAY}" || { echo "FATAL: git commit failed" >&2; exit 1; }
   COMMIT_SHA="$(git rev-parse --short HEAD)";
@@ -111,6 +111,10 @@ mkdir -p "${MEM_DIR}"
     "${COMMIT_SHA}" "${PUSHED}" "${DEPLOY}" "${TODAY}" "${SITE_CODE}";
 } >> "${MEM_FILE}"
 
-echo "OK commit=${COMMIT_SHA} pushed=${PUSHED} deploy=${DEPLOY} site_http=${SITE_CODE} mem=${MEM_FILE}"
+if [[ "${PUSHED}" != "yes" ]]; then
+  echo "RESULT: NOTHING_TO_PUSH (nothing to do — do NOT go investigate the nightly, do NOT wait for it).";
+else
+  echo "RESULT: OK commit=${COMMIT_SHA} pushed=${PUSHED} deploy=${DEPLOY} site_http=${SITE_CODE} mem=${MEM_FILE}";
+fi
 echo "STOP-HERE: push and verification are complete. Do NOT call vercel inspect/vercel ls again, do NOT re-verify, and exit now."
 exit 0
